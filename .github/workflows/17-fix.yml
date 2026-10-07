@@ -1,0 +1,25 @@
+name: fix-file-names
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['.github/**']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strip upload counters
+        run: |
+          for f in [0-9]*-* release/[0-9]*-*; do
+            [ -f "$f" ] || continue
+            d=$(dirname "$f"); b=$(basename "$f"); n="$d/${b#*-}"; n="${n#./}"
+            git mv -f "$f" "$n"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Fix file names"
+            git push
+          fi
