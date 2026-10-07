@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     readonly Settings _s = Settings.Load();
     readonly IntPtr _hwnd;
     readonly TrayIcon _tray;
+    readonly TrayMenuWindow _menu;
     readonly DispatcherQueueTimer _timer;
     readonly TextBlock[] _rowName = new TextBlock[6];
     readonly TextBlock[] _rowTime = new TextBlock[6];
@@ -48,19 +49,27 @@ public sealed partial class MainWindow : Window
 
         double dpi = GetDpiForWindow(_hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        AppWindow.Resize(new SizeInt32((int)(900 * dpi), (int)(700 * dpi)));
+        AppWindow.Resize(new SizeInt32((int)(470 * dpi), (int)(610 * dpi)));
         try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "app.ico")); } catch { }
         AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; s.Hide(); } };
 
+        try
+        {
+            ImgLogo.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
+            var v = typeof(App).Assembly.GetName().Version;
+            if (v != null) TxtVersion.Text = "الإصدار " + v.Major + "." + v.Minor + "." + v.Build;
+        }
+        catch { }
         BuildRows();
         LoadSettingsUi();
         ApplyAppearance();
         Nav.SelectedItem = Nav.MenuItems[0];
         _loading = false;
 
+        _menu = new TrayMenuWindow(OnMenu);
         _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, "app.ico"),
             new[] { (CmdOpen, "فتح"), (CmdWidget, "ويدجت سطح المكتب"), (CmdSettings, "الإعدادات"), (CmdExit, "خروج") },
-            ToggleFlyout, OnMenu);
+            ToggleFlyout, OnMenu, OnContext);
 
         _timer = DispatcherQueue.CreateTimer();
         _timer.Interval = TimeSpan.FromSeconds(1);
@@ -73,6 +82,12 @@ public sealed partial class MainWindow : Window
     }
 
     // ---------- window / tray ----------
+    bool OnContext(int x, int y)
+    {
+        try { _menu.ShowAt(x, y, _s.Theme, _s.WidgetVisible); return true; }
+        catch { return false; }
+    }
+
     void OnMenu(int cmd)
     {
         if (cmd == CmdOpen) ShowFlyout(false);
@@ -199,11 +214,11 @@ public sealed partial class MainWindow : Window
             var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var n = new TextBlock { Text = Times.Names[i], FontSize = 18, VerticalAlignment = VerticalAlignment.Center };
+            var n = new TextBlock { Text = Times.Names[i], FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
             var t = new TextBlock { Text = "--:--", FontSize = 18, FlowDirection = FlowDirection.LeftToRight, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(n, 0); Grid.SetColumn(t, 1);
             g.Children.Add(n); g.Children.Add(t);
-            var b = new Border { Child = g, Padding = new Thickness(16, 12, 16, 12), CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+            var b = new Border { Child = g, Padding = new Thickness(14, 6, 14, 6), CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
             _rowName[i] = n; _rowTime[i] = t; _rowBox[i] = b;
             RowsPanel.Children.Add(b);
         }
@@ -401,5 +416,73 @@ public sealed partial class MainWindow : Window
             else k?.DeleteValue("FluentPrayerTimes", false);
         }
         catch { }
+    }
+}
+
+
+/// <summary>Invisible 1px host window that shows a modern Windows 11 MenuFlyout at the tray icon.</summary>
+sealed class TrayMenuWindow : Window
+{
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
+    [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
+
+    readonly Grid _root = new();
+    readonly IntPtr _hwnd;
+    readonly Action<int> _onCmd;
+
+    public TrayMenuWindow(Action<int> onCmd)
+    {
+        _onCmd = onCmd;
+        Content = _root;
+        Title = "Fluent Prayer Times Menu";
+        _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        if (AppWindow.Presenter is OverlappedPresenter p)
+        {
+            p.SetBorderAndTitleBar(false, false);
+            p.IsResizable = false; p.IsMaximizable = false; p.IsMinimizable = false; p.IsAlwaysOnTop = true;
+        }
+        try { AppWindow.IsShownInSwitchers = false; } catch { }
+        AppWindow.Closing += (a, e) => { e.Cancel = true; a.Hide(); };
+        // tool window + almost fully transparent so only the flyout is visible
+        long ex = (long)GetWindowLongPtr(_hwnd, -20);
+        SetWindowLongPtr(_hwnd, -20, (IntPtr)(ex | 0x80 | 0x80000));
+        SetLayeredWindowAttributes(_hwnd, 0, 1, 2);
+    }
+
+    public void ShowAt(int x, int y, string theme, bool widgetOn)
+    {
+        var wa = DisplayArea.GetFromPoint(new PointInt32(x, y), DisplayAreaFallback.Nearest).WorkArea;
+        bool lower = y > wa.Y + wa.Height / 2;
+        AppWindow.MoveAndResize(new RectInt32(x, y, 1, 1));
+        _root.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        _root.FlowDirection = FlowDirection.RightToLeft;
+
+        var f = new MenuFlyout { ShouldConstrainToRootBounds = false };
+        void Add(string text, string glyph, int cmd)
+        {
+            var it = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } };
+            it.Click += (s, e) => _onCmd(cmd);
+            f.Items.Add(it);
+        }
+        Add("فتح", "\uE8A7", 1);
+        var w = new ToggleMenuFlyoutItem { Text = "ويدجت سطح المكتب", IsChecked = widgetOn };
+        w.Click += (s, e) => _onCmd(4);
+        f.Items.Add(w);
+        Add("الإعدادات", "\uE713", 2);
+        f.Items.Add(new MenuFlyoutSeparator());
+        Add("خروج", "\uE7E8", 3);
+        f.Closed += (s, e) => AppWindow.Hide();
+
+        AppWindow.Show();
+        Activate();
+        SetForegroundWindow(_hwnd);
+        f.ShowAt(_root, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        {
+            Position = new Windows.Foundation.Point(0, 0),
+            Placement = lower ? Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedRight
+                              : Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
+        });
     }
 }

@@ -13,6 +13,7 @@ public sealed partial class WidgetWindow : Window
 {
     [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out CurPt p);
+    [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
     [StructLayout(LayoutKind.Sequential)] struct CurPt { public int X, Y; }
 
     readonly Settings _s;
@@ -32,7 +33,7 @@ public sealed partial class WidgetWindow : Window
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         double dpi = GetDpiForWindow(hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        int w = (int)(290 * dpi), h = (int)(150 * dpi);
+        int w = (int)(300 * dpi), h = (int)(160 * dpi);
 
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
@@ -43,6 +44,13 @@ public sealed partial class WidgetWindow : Window
             p.IsAlwaysOnTop = _s.WidgetPinned;
         }
         try { AppWindow.IsShownInSwitchers = false; } catch { }
+        try
+        {
+            int none = unchecked((int)0xFFFFFFFE), round = 2;
+            DwmSetWindowAttribute(hwnd, 34, ref none, 4);   // DWMWA_BORDER_COLOR = none (removes the white border)
+            DwmSetWindowAttribute(hwnd, 33, ref round, 4);  // rounded corners
+        }
+        catch { }
         BtnPin.IsChecked = _s.WidgetPinned;
         AppWindow.Closing += (a, e) => { e.Cancel = true; a.Hide(); };
 

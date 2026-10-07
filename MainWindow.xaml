@@ -17,8 +17,8 @@
         </Grid>
 
         <NavigationView x:Name="Nav" Grid.Row="1"
-                        PaneDisplayMode="Left" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
-                        OpenPaneLength="230" IsPaneOpen="True"
+                        PaneDisplayMode="LeftCompact" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
+                        OpenPaneLength="200" IsPaneOpen="False"
                         SelectionChanged="Nav_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="المواقيت" Tag="times">
@@ -37,24 +37,24 @@
             <Grid>
                 <!-- ===== Times page ===== -->
                 <ScrollViewer x:Name="PageTimes" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="14" Padding="28,16,28,28" FlowDirection="RightToLeft">
+                    <StackPanel Spacing="10" Padding="20,8,20,14" FlowDirection="RightToLeft">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="مواقيت الصلاة" FontSize="30" FontWeight="SemiBold" />
-                            <TextBlock x:Name="TxtCity" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock x:Name="TxtDates" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Text="مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock x:Name="TxtCity" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtDates" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="24">
-                            <StackPanel Spacing="4">
+                                CornerRadius="8" Padding="16,12,16,12">
+                            <StackPanel Spacing="2">
                                 <TextBlock Text="الصلاة القادمة" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <StackPanel Orientation="Horizontal" Spacing="14">
-                                    <TextBlock x:Name="TxtNextName" Text="--" FontSize="34" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="TxtNextTime" Text="" FontSize="20" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                                    <TextBlock x:Name="TxtNextName" Text="--" FontSize="26" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="TxtNextTime" Text="" FontSize="16" VerticalAlignment="Bottom" Margin="0,0,0,4"
                                                FlowDirection="LeftToRight" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
-                                <TextBlock x:Name="TxtCountdown" Text="--:--:--" FontSize="52" FontWeight="SemiBold"
+                                <TextBlock x:Name="TxtCountdown" Text="--:--:--" FontSize="40" FontWeight="SemiBold"
                                            FlowDirection="LeftToRight" HorizontalAlignment="Right"
                                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 <TextBlock x:Name="TxtStatus" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -63,10 +63,10 @@
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="16">
-                            <StackPanel Spacing="6">
-                                <TextBlock Text="مواقيت اليوم" FontSize="20" FontWeight="SemiBold" Margin="8,4,8,6" />
-                                <StackPanel x:Name="RowsPanel" Spacing="4" />
+                                CornerRadius="8" Padding="10,8,10,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="مواقيت اليوم" FontSize="16" FontWeight="SemiBold" Margin="8,2,8,4" />
+                                <StackPanel x:Name="RowsPanel" Spacing="2" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -74,22 +74,22 @@
 
                 <!-- ===== Settings page ===== -->
                 <ScrollViewer x:Name="PageSettings" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                    <StackPanel Spacing="14" Padding="28,16,28,28" FlowDirection="RightToLeft">
-                        <TextBlock Text="الإعدادات" FontSize="30" FontWeight="SemiBold" />
+                    <StackPanel Spacing="10" Padding="20,8,20,20" FlowDirection="RightToLeft">
+                        <TextBlock Text="الإعدادات" FontSize="24" FontWeight="SemiBold" />
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="المظهر" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="المظهر" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="الخلفية" FontWeight="SemiBold" />
-                                <StackPanel Orientation="Horizontal" Spacing="24">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
                                     <RadioButton x:Name="RbMicaAlt" GroupName="bd" Content="Mica Alt" Tag="micaalt" Checked="Backdrop_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbMica" GroupName="bd" Content="Mica" Tag="mica" Checked="Backdrop_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbAcrylic" GroupName="bd" Content="Acrylic" Tag="acrylic" Checked="Backdrop_Checked" MinWidth="0" />
                                 </StackPanel>
                                 <TextBlock Text="السمة" FontWeight="SemiBold" Margin="0,6,0,0" />
-                                <StackPanel Orientation="Horizontal" Spacing="24">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
                                     <RadioButton x:Name="RbThemeSys" GroupName="th" Content="حسب النظام" Tag="system" Checked="Theme_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbThemeLight" GroupName="th" Content="فاتح" Tag="light" Checked="Theme_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbThemeDark" GroupName="th" Content="غامق" Tag="dark" Checked="Theme_Checked" MinWidth="0" />
@@ -101,9 +101,9 @@
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="الموقع" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="الموقع" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="المدينة" FontWeight="SemiBold" />
                                 <ComboBox x:Name="CmbCity" MinWidth="280" SelectionChanged="City_Changed" />
                                 <TextBlock Text="بحث عن مكان في مصر" FontWeight="SemiBold" Margin="0,6,0,0" />
@@ -127,10 +127,10 @@
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="التوقيت الصيفي" FontSize="20" FontWeight="SemiBold" />
-                                <StackPanel Orientation="Horizontal" Spacing="24">
+                                <TextBlock Text="التوقيت الصيفي" FontSize="16" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Vertical" Spacing="2">
                                     <RadioButton x:Name="RbDstAuto" GroupName="dst" Content="تلقائي" Tag="auto" Checked="Dst_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbDstOff" GroupName="dst" Content="إيقاف (UTC+2)" Tag="off" Checked="Dst_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbDstOn" GroupName="dst" Content="تشغيل (UTC+3)" Tag="on" Checked="Dst_Checked" MinWidth="0" />
@@ -140,9 +140,9 @@
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="ويدجت سطح المكتب" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="ويدجت سطح المكتب" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="نافذة صغيرة عايمة بتعرض الصلاة القادمة والعدّاد. تتحرك بالسحب وتتثبت فوق النوافذ." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <ToggleSwitch x:Name="TglWidget" OnContent="ظاهر" OffContent="مخفي" Toggled="Widget_Toggled" />
                             </StackPanel>
@@ -150,9 +150,9 @@
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="التشغيل" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="التشغيل" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="تشغيل البرنامج مع بدء ويندوز" FontWeight="SemiBold" />
                                 <ToggleSwitch x:Name="TglStartup" OnContent="مفعّل" OffContent="متوقف" Toggled="Startup_Toggled" />
                             </StackPanel>
@@ -162,25 +162,26 @@
 
                 <!-- ===== About page ===== -->
                 <ScrollViewer x:Name="PageAbout" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                    <StackPanel Spacing="14" Padding="28,16,28,28" FlowDirection="RightToLeft">
-                        <TextBlock Text="عن البرنامج" FontSize="30" FontWeight="SemiBold" />
+                    <StackPanel Spacing="10" Padding="20,8,20,20" FlowDirection="RightToLeft">
+                        <TextBlock Text="عن البرنامج" FontSize="24" FontWeight="SemiBold" />
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="28">
-                            <StackPanel Spacing="10">
-                                <FontIcon Glyph="&#xE823;" FontSize="48" HorizontalAlignment="Right" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                <TextBlock Text="برنامج مواقيت الصلاه" FontSize="26" FontWeight="SemiBold" />
-                                <TextBlock Text="Fluent Prayer Times" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock Text="المطور: محمد النجار" FontSize="16" Margin="0,8,0,0" />
-                                <TextBlock Text="Vibe coding with Instinct.AI" FontSize="16" FlowDirection="LeftToRight" HorizontalAlignment="Right" />
-                                <TextBlock Text="الإصدار: 1.0" FontSize="16" />
+                                CornerRadius="8" Padding="20,28,20,28">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Image x:Name="ImgLogo" Width="88" Height="88" HorizontalAlignment="Center" />
+                                <TextBlock Text="برنامج مواقيت الصلاه" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock x:Name="TxtVersion" Text="الإصدار 1.0" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="brought to you by app.instinct AI" FontSize="14" FlowDirection="LeftToRight" HorizontalAlignment="Center" TextAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="22">
+                                CornerRadius="8" Padding="16">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="مصادر البيانات" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="مصادر البيانات" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="المطور: محمد النجار" FontSize="13" />
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            Text="المواقيت من Aladhan API بطريقة الحساب 5 (الهيئة المصرية العامة للمساحة). البحث عن الأماكن من Open-Meteo. الإعدادات والمواقيت بتتخزن محليًا في AppData فالبرنامج بيشتغل أوفلاين." />
                             </StackPanel>

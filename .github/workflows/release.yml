@@ -11,7 +11,7 @@ on:
       version:
         description: 'Version number, e.g. 1.1.0 (a tag vX.Y.Z will be created)'
         required: true
-        default: '1.0.0'
+        default: '1.0.1'
 
 permissions:
   contents: write

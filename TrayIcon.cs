@@ -44,6 +44,7 @@ sealed class TrayIcon : IDisposable
     readonly IntPtr _hwnd;
     readonly Action _onClick;
     readonly Action<int> _onMenu;
+    readonly Func<int, int, bool>? _onContext;
     readonly (int id, string text)[] _items;
     readonly SubclassProc _proc;
     readonly uint _taskbarCreated;
@@ -51,9 +52,9 @@ sealed class TrayIcon : IDisposable
     string _tip = "";
     bool _added;
 
-    public TrayIcon(IntPtr hwnd, string icoPath, (int id, string text)[] items, Action onClick, Action<int> onMenu)
+    public TrayIcon(IntPtr hwnd, string icoPath, (int id, string text)[] items, Action onClick, Action<int> onMenu, Func<int, int, bool>? onContext = null)
     {
-        _hwnd = hwnd; _items = items; _onClick = onClick; _onMenu = onMenu;
+        _hwnd = hwnd; _items = items; _onClick = onClick; _onMenu = onMenu; _onContext = onContext;
         int sz = GetSystemMetrics(49);
         if (sz <= 0) sz = 16;
         _icon = LoadImageW(IntPtr.Zero, icoPath, 1, sz, sz, 0x10);
@@ -88,7 +89,12 @@ sealed class TrayIcon : IDisposable
         {
             uint ev = (uint)((long)l & 0xFFFF);
             if (ev == WM_LBUTTONUP) _onClick();
-            else if (ev == WM_RBUTTONUP) ShowMenu();
+            else if (ev == WM_RBUTTONUP)
+            {
+                bool ok = false;
+                if (_onContext != null && GetCursorPos(out var cp)) { try { ok = _onContext(cp.x, cp.y); } catch { } }
+                if (!ok) ShowMenu();
+            }
             return IntPtr.Zero;
         }
         if (_taskbarCreated != 0 && msg == _taskbarCreated) { Add(); }
