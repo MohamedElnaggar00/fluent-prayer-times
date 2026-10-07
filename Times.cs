@@ -16,7 +16,11 @@ public class Settings {
     public Loc Location { get; set; } = new();
     public bool RunAtStartup { get; set; } = false;
     public string Backdrop { get; set; } = "micaalt";   // micaalt | mica | acrylic
-    public string Theme { get; set; } = "system";       // system | light | dark
+    public string Theme { get; set; } = "system";
+    public bool WidgetVisible { get; set; } = false;
+    public bool WidgetPinned { get; set; } = true;
+    public int WidgetX { get; set; } = int.MinValue;
+    public int WidgetY { get; set; } = int.MinValue;       // system | light | dark
     public string Dst { get; set; } = "auto";           // auto | off | on
     static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
     static string F => Path.Combine(Dir, "settings.json");

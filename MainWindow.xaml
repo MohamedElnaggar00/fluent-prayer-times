@@ -142,6 +142,16 @@
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                                 CornerRadius="8" Padding="22">
                             <StackPanel Spacing="10">
+                                <TextBlock Text="ويدجت سطح المكتب" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="نافذة صغيرة عايمة بتعرض الصلاة القادمة والعدّاد. تتحرك بالسحب وتتثبت فوق النوافذ." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <ToggleSwitch x:Name="TglWidget" OnContent="ظاهر" OffContent="مخفي" Toggled="Widget_Toggled" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="22">
+                            <StackPanel Spacing="10">
                                 <TextBlock Text="التشغيل" FontSize="20" FontWeight="SemiBold" />
                                 <TextBlock Text="تشغيل البرنامج مع بدء ويندوز" FontWeight="SemiBold" />
                                 <ToggleSwitch x:Name="TglStartup" OnContent="مفعّل" OffContent="متوقف" Toggled="Startup_Toggled" />

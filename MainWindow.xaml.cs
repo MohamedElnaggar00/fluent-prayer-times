@@ -19,7 +19,9 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")] static extern bool GetCursorPos(out CurPt p);
     [StructLayout(LayoutKind.Sequential)] struct CurPt { public int X, Y; }
 
-    const int CmdOpen = 1, CmdSettings = 2, CmdExit = 3;
+    const int CmdOpen = 1, CmdSettings = 2, CmdExit = 3, CmdWidget = 4;
+    WidgetWindow? _widget;
+    string _wName = "--", _wTime = "", _wCount = "--:--:--";
 
     readonly Settings _s = Settings.Load();
     readonly IntPtr _hwnd;
@@ -57,7 +59,7 @@ public sealed partial class MainWindow : Window
         _loading = false;
 
         _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, "app.ico"),
-            new[] { (CmdOpen, "فتح"), (CmdSettings, "الإعدادات"), (CmdExit, "خروج") },
+            new[] { (CmdOpen, "فتح"), (CmdWidget, "ويدجت سطح المكتب"), (CmdSettings, "الإعدادات"), (CmdExit, "خروج") },
             ToggleFlyout, OnMenu);
 
         _timer = DispatcherQueue.CreateTimer();
@@ -66,6 +68,7 @@ public sealed partial class MainWindow : Window
         _timer.Start();
         _ = ReloadAsync();
 
+        if (_s.WidgetVisible) SetWidget(true);
         if (!startHidden) ShowFlyout(false);
     }
 
@@ -74,7 +77,39 @@ public sealed partial class MainWindow : Window
     {
         if (cmd == CmdOpen) ShowFlyout(false);
         else if (cmd == CmdSettings) { Nav.SelectedItem = Nav.FooterMenuItems[0]; ShowFlyout(false); }
+        else if (cmd == CmdWidget) SetWidget(!_s.WidgetVisible);
         else if (cmd == CmdExit) Quit();
+    }
+
+    void SetWidget(bool on)
+    {
+        _s.WidgetVisible = on;
+        _s.Save();
+        if (on)
+        {
+            if (_widget == null)
+            {
+                _widget = new WidgetWindow(_s);
+                _widget.HiddenByUser = () => { _s.WidgetVisible = false; _s.Save(); SyncWidgetToggle(); };
+            }
+            _widget.SetInfo(_wName, _wTime, _wCount);
+            _widget.ShowWidget();
+        }
+        else _widget?.HideWidget();
+        SyncWidgetToggle();
+    }
+
+    void SyncWidgetToggle()
+    {
+        bool was = _loading; _loading = true;
+        TglWidget.IsOn = _s.WidgetVisible;
+        _loading = was;
+    }
+
+    void Widget_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        SetWidget(TglWidget.IsOn);
     }
 
     void Quit()
@@ -204,6 +239,7 @@ public sealed partial class MainWindow : Window
         {
             TxtNextName.Text = "--"; TxtNextTime.Text = ""; TxtCountdown.Text = "--:--:--";
             _tray.SetTip("مواقيت الصلاة");
+            PushWidget("--", "", "--:--:--");
             return;
         }
         var nx = Times.Next(now, _res.Today.T, _res.Tomorrow?.T);
@@ -213,6 +249,7 @@ public sealed partial class MainWindow : Window
         TxtNextName.Text = Times.Names[idx] + (tomorrow ? " (غدًا)" : "");
         TxtNextTime.Text = time.ToString("h:mm tt", CultureInfo.InvariantCulture);
         TxtCountdown.Text = Times.Fmt(left);
+        PushWidget(TxtNextName.Text, TxtNextTime.Text, TxtCountdown.Text);
         _tray.SetTip((idx == 1 ? "باقي على الشروق: " : "باقي على صلاة " + Times.Names[idx] + ": ") + Times.Fmt(left));
 
         int hl = tomorrow ? -1 : idx;
@@ -230,6 +267,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    void PushWidget(string n, string t, string c)
+    {
+        _wName = n; _wTime = t; _wCount = c;
+        _widget?.SetInfo(n, t, c);
+    }
+
     // ---------- settings ----------
     void LoadSettingsUi()
     {
@@ -241,6 +284,7 @@ public sealed partial class MainWindow : Window
         (_s.Theme switch { "light" => RbThemeLight, "dark" => RbThemeDark, _ => RbThemeSys }).IsChecked = true;
         (_s.Dst switch { "off" => RbDstOff, "on" => RbDstOn, _ => RbDstAuto }).IsChecked = true;
         TglStartup.IsOn = _s.RunAtStartup;
+        TglWidget.IsOn = _s.WidgetVisible;
     }
 
     void SyncCitySelection()
