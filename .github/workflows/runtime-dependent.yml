@@ -1,0 +1,58 @@
+name: Runtime-dependent installer
+on:
+  push:
+    paths: ['.github/workflows/runtime-dependent.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1.1.1
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Reuse the exact released application payload
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.1.1/FluentPrayerTimes-v1.1.1-portable-win-x64.zip' -OutFile portable.zip
+          if ((Get-FileHash portable.zip -Algorithm SHA256).Hash -ne '0F50C4534791E1AF82D16ED44DE03C2179D095BE9932FD0A958C35C293C80FED') { throw 'Released payload hash mismatch' }
+          Expand-Archive portable.zip payload
+          Compress-Archive -Path payload/FluentPrayerTimes-v1.1.1/* -DestinationPath installer/payload.zip
+      - name: Publish small .NET runtime dependent single-file installer
+        shell: pwsh
+        run: |
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o setup
+          if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
+          Copy-Item setup/FluentPrayerTimes-Setup.exe 'FluentPrayerTimes-v1.1.1-installer-.NET-runtime-dependent-win-x64.exe'
+          if ((Get-Item setup/FluentPrayerTimes-Setup.exe).Length -gt 25MB) { throw 'Unexpectedly large runtime-dependent installer' }
+      - name: Verify actual Windows UI, install and launch
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process .\wari.exe -ArgumentList '--quiet' -Wait
+          $p = Start-Process setup/FluentPrayerTimes-Setup.exe -ArgumentList '--preview',(Join-Path $PWD 'runtime-dependent-installer-screen.png') -PassThru -Wait
+          if ($p.ExitCode -ne 0 -or -not (Test-Path runtime-dependent-installer-screen.png)) { throw 'UI render failed' }
+          $p = Start-Process setup/FluentPrayerTimes-Setup.exe -ArgumentList '--verify-install' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Install failed' }
+          $exe = Join-Path $env:ProgramFiles 'FluentPrayerTimes/FluentPrayerTimes.exe'
+          if (-not (Test-Path (Join-Path $env:ProgramData 'Microsoft/Windows/Start Menu/Programs/Fluent Prayer Times.lnk'))) { throw 'Shortcut missing' }
+          $p = Start-Process $exe -ArgumentList '--tray' -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) { throw 'Installed app exited early' }
+          Stop-Process -Id $p.Id -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-dependent-verified
+          path: |
+            runtime-dependent-installer-screen.png
+            FluentPrayerTimes-v1.1.1-installer-.NET-runtime-dependent-win-x64.exe
+      - name: Add only the third asset, never overwrite existing assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v1.1.1 'FluentPrayerTimes-v1.1.1-installer-.NET-runtime-dependent-win-x64.exe'
