@@ -98,7 +98,7 @@
                                     <RadioButton x:Name="RbThemeLight" GroupName="th" Content="فاتح" Tag="light" Checked="Theme_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbThemeDark" GroupName="th" Content="غامق" Tag="dark" Checked="Theme_Checked" MinWidth="0" />
                                 </StackPanel>
-                                <TextBlock Text="Mica وMica Alt بيتلونوا بخلفية سطح المكتب، وAcrylic شفاف مع blur. السمة ممكن تتبع ويندوز أو تتحدد يدويًا."
+                                <TextBlock Text="يتأثر Mica وMica Alt بخلفية سطح المكتب، أما Acrylic فهو شفاف مع تمويه. يمكن أن تتبع السمة النظام أو تُحدَّد يدويًا."
                                            TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                         </Border>
@@ -110,7 +110,7 @@
                                 <TextBlock Text="الموقع" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="المدينة" FontWeight="SemiBold" />
                                 <ComboBox x:Name="CmbCity" HorizontalAlignment="Stretch" SelectionChanged="City_Changed" />
-                                <TextBlock Text="بحث عن مكان في مصر" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <TextBlock Text="البحث عن مكان في مصر" FontWeight="SemiBold" Margin="0,6,0,0" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -151,7 +151,7 @@
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="ويدجت سطح المكتب" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Text="نافذة صغيرة عايمة بتعرض الصلاة القادمة والعدّاد. تتحرك بالسحب وتتثبت فوق النوافذ." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="نافذة صغيرة عائمة تعرض الصلاة القادمة والعدّاد، يمكن تحريكها بالسحب وتثبيتها فوق النوافذ." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <ToggleSwitch x:Name="TglWidget" OnContent="ظاهر" OffContent="مخفي" Toggled="Widget_Toggled" />
                             </StackPanel>
                         </Border>
@@ -177,7 +177,7 @@
                                 CornerRadius="8" Padding="20,28,20,28">
                             <StackPanel Spacing="8" HorizontalAlignment="Center">
                                 <Image x:Name="ImgLogo" Width="88" Height="88" HorizontalAlignment="Center" />
-                                <TextBlock Text="برنامج مواقيت الصلاه" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Text="برنامج مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0" />
                                 <TextBlock x:Name="TxtVersion" Text="الإصدار 1.0" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="brought to you by app.instinct AI" FontSize="14" FlowDirection="LeftToRight" HorizontalAlignment="Center" TextAlignment="Center"
@@ -191,7 +191,7 @@
                                 <TextBlock Text="مصادر البيانات" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="المطور: محمد النجار" FontSize="13" />
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           Text="المواقيت من Aladhan API بطريقة الحساب 5 (الهيئة المصرية العامة للمساحة). البحث عن الأماكن من Open-Meteo. الإعدادات والمواقيت بتتخزن محليًا في AppData فالبرنامج بيشتغل أوفلاين." />
+                                           Text="المواقيت من Aladhan API بطريقة الحساب 5 (الهيئة المصرية العامة للمساحة). البحث عن الأماكن من Open-Meteo. تُخزَّن الإعدادات والمواقيت محليًا في AppData، فيعمل البرنامج دون اتصال بالإنترنت." />
                             </StackPanel>
                         </Border>
                     </StackPanel>

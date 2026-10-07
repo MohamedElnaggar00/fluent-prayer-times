@@ -44,13 +44,7 @@ public sealed partial class WidgetWindow : Window
             p.IsAlwaysOnTop = _s.WidgetPinned;
         }
         try { AppWindow.IsShownInSwitchers = false; } catch { }
-        try
-        {
-            int none = unchecked((int)0xFFFFFFFE), round = 2;
-            DwmSetWindowAttribute(hwnd, 34, ref none, 4);   // DWMWA_BORDER_COLOR = none (removes the white border)
-            DwmSetWindowAttribute(hwnd, 33, ref round, 4);  // rounded corners
-        }
-        catch { }
+        WindowChrome.Apply(hwnd);
         BtnPin.IsChecked = _s.WidgetPinned;
         AppWindow.Closing += (a, e) => { e.Cancel = true; a.Hide(); };
 
@@ -70,7 +64,7 @@ public sealed partial class WidgetWindow : Window
         TxtName.Text = name; TxtTime.Text = time; TxtCount.Text = count;
     }
 
-    public void ShowWidget() { AppWindow.Show(); Activate(); }
+    public void ShowWidget() { AppWindow.Show(); WindowChrome.Apply(WinRT.Interop.WindowNative.GetWindowHandle(this)); Activate(); }
     public void HideWidget() { AppWindow.Hide(); }
 
     void Surface_PointerPressed(object sender, PointerRoutedEventArgs e)

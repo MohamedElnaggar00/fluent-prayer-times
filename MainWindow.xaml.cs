@@ -155,6 +155,7 @@ public sealed partial class MainWindow : Window
         if (AppWindow.Presenter is OverlappedPresenter p && p.State == OverlappedPresenterState.Minimized) p.Restore();
         Place(nearCursor);
         AppWindow.Show();
+        WindowChrome.Apply(_hwnd);
         Activate();
         SetForegroundWindow(_hwnd);
     }
@@ -256,7 +257,7 @@ public sealed partial class MainWindow : Window
         var ar = new CultureInfo("ar-EG");
         string greg = DateTime.Now.ToString("dddd d MMMM yyyy", ar);
         TxtDates.Text = r.Today != null ? greg + "  -  " + r.Today.Hijri : greg;
-        TxtStatus.Text = r.Today == null ? "مفيش اتصال ومفيش مواقيت محفوظة" : (r.Offline ? "أوفلاين - من آخر بيانات محفوظة" : "");
+        TxtStatus.Text = r.Today == null ? "لا يوجد اتصال ولا مواقيت محفوظة" : (r.Offline ? "دون اتصال - من آخر بيانات محفوظة" : "");
         _hl = -2;
         Tick();
     }
@@ -362,9 +363,9 @@ public sealed partial class MainWindow : Window
             LstPlaces.ItemsSource = _places.Select(p => p.Label).ToList();
             _loading = false;
             LstPlaces.Visibility = Visibility.Visible;
-            if (_places.Count == 0) TxtDetect.Text = "مفيش نتائج";
+            if (_places.Count == 0) TxtDetect.Text = "لا توجد نتائج";
         }
-        catch { TxtDetect.Text = "فشل البحث - تأكد من الاتصال"; }
+        catch { TxtDetect.Text = "فشل البحث - تأكد من الاتصال بالإنترنت"; }
     }
 
     void Place_Selected(object sender, SelectionChangedEventArgs e)
@@ -378,9 +379,9 @@ public sealed partial class MainWindow : Window
 
     async void Detect_Click(object sender, RoutedEventArgs e)
     {
-        TxtDetect.Text = "بحدد موقعك...";
+        TxtDetect.Text = "جارٍ تحديد موقعك...";
         var (p, how) = await Times.Detect();
-        if (p == null) { TxtDetect.Text = "ماقدرتش أحدد الموقع"; return; }
+        if (p == null) { TxtDetect.Text = "تعذّر تحديد الموقع"; return; }
         _s.Location = new Loc { Name = p.Label, NameAr = p.Label, Lat = p.Lat, Lon = p.Lon, UseCity = false };
         TxtDetect.Text = "تم: " + how;
         LocationChanged();
@@ -470,6 +471,7 @@ sealed class TrayMenuWindow : Window
         Activated += (s, e) => { if (e.WindowActivationState == WindowActivationState.Deactivated) AppWindow.Hide(); };
         long ex = (long)GetWindowLongPtr(_hwnd, -20);
         SetWindowLongPtr(_hwnd, -20, (IntPtr)(ex | 0x80));
+        WindowChrome.Apply(_hwnd);
     }
 
     void AddItem(string text, string glyph, int cmd, bool check = false)

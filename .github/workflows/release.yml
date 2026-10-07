@@ -11,7 +11,7 @@ on:
       version:
         description: 'Version number, e.g. 1.1.0 (a tag vX.Y.Z will be created)'
         required: true
-        default: '1.0.2'
+        default: '1.0.3'
 
 permissions:
   contents: write
@@ -85,11 +85,11 @@ jobs:
           ## Fluent Prayer Times (WinUI 3)
 
           **المتطلبات:** Windows 10 1809+ / Windows 11 (x64) و **Windows App Runtime 1.6 (x64)**.
-          لو البرنامج ماشتغلش أو طلب runtime: نزّله من https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe وثبّته مرة واحدة.
+          إذا لم يعمل البرنامج أو طلب بيئة التشغيل (runtime): نزّلها من https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe وثبّتها مرة واحدة.
 
           Requires the Windows App Runtime 1.6 (x64): https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
 
-          فك الضغط وشغّل `FluentPrayerTimes.exe`، ودوّر على أيقونة المأذنة في الـ tray. البرنامج غير موقّع: لو ظهر SmartScreen اضغط More info ثم Run anyway.
+          فُكّ الضغط وشغّل `FluentPrayerTimes.exe`، ثم ابحث عن أيقونة المئذنة في منطقة الإشعارات. البرنامج غير موقَّع: إذا ظهر SmartScreen فاضغط More info ثم Run anyway.
           NOTES
           sed -i 's/^          //' notes.md
           if gh release view "v$VER" >/dev/null 2>&1; then
