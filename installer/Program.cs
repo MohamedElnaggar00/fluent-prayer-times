@@ -46,12 +46,12 @@ static class Program
         }
         if (args.Contains("--verify-install")) { Install(_ => { }); return; }
         var app = new Application();
-        var window = new Window { Title = Product + " - تثبيت", Width = 490, Height = 555, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(243,243,246)), FontFamily = new FontFamily("Segoe UI"), FlowDirection = FlowDirection.RightToLeft };
+        var window = new Window { Title = Product + " - تثبيت", Width = 490, Height = 615, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(243,243,246)), FontFamily = new FontFamily("Segoe UI"), FlowDirection = FlowDirection.RightToLeft };
         window.SourceInitialized += (_, _) => { var h = new WindowInteropHelper(window).Handle; int backdrop = 2, corner = 2; try { DwmSetWindowAttribute(h, 38, ref backdrop, 4); DwmSetWindowAttribute(h, 33, ref corner, 4); } catch { } };
         var panel = new StackPanel { Margin = new Thickness(28) };
         panel.Children.Add(new TextBlock { Text = "عن البرنامج", FontSize = 24, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0,0,0,18) });
         var about = new StackPanel { Margin = new Thickness(20), HorizontalAlignment = HorizontalAlignment.Center };
-        about.Children.Add(new Image { Width = 88, Height = 88, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")), Margin = new Thickness(0,0,0,14) });
+        about.Children.Add(new Border { Width = 104, Height = 104, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(0,103,192)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,14), Child = new Image { Width = 72, Height = 72, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")) } });
         about.Children.Add(Text("برنامج مواقيت الصلاة", 24));
         about.Children.Add(Text("الإصدار 1.1.1", 14));
         about.Children.Add(Text("brought to you by app.instinct AI", 14));
@@ -82,9 +82,9 @@ static class Program
         window.Content = panel;
         if (args.Length == 2 && args[0] == "--preview")
         {
-            panel.Width = 434; panel.Height = 495;
-            panel.Measure(new Size(434,495)); panel.Arrange(new Rect(0,0,434,495)); panel.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(434,495,96,96,PixelFormats.Pbgra32);
+            panel.Width = 434; panel.Height = 555;
+            panel.Measure(new Size(434,555)); panel.Arrange(new Rect(0,0,434,555)); panel.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(434,555,96,96,PixelFormats.Pbgra32);
             bitmap.Render(panel);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var file = File.Create(args[1]); encoder.Save(file); return;
