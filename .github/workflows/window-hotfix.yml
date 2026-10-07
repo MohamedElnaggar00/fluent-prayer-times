@@ -1,0 +1,89 @@
+name: v1.1.2 window hotfix
+on:
+  push:
+    paths: ['.github/workflows/window-hotfix.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply reviewed window and icon fixes
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes('patch.ps1', [Convert]::FromBase64String('JHAgPSAnTWFpbldpbmRvdy54YW1sLmNzJwokcyA9IFtJTy5GaWxlXTo6UmVhZEFsbFRleHQoJHApCiRzID0gJHMuUmVwbGFjZSgnTmF0aXZlTW90aW9uLldpbmRvdyhfaHduZCwgZmFsc2UpOycsJ0FwcFdpbmRvdy5IaWRlKCk7JykKJHMgPSAkcyAtcmVwbGFjZSAnICAgICAgICBXaW5kb3dDaHJvbWUuQXBwbHlcKF9od25kXCk7XHI/XG4gICAgICAgIGlmIFwoIUFwcFdpbmRvdy5Jc1Zpc2libGVcKSBOYXRpdmVNb3Rpb24uV2luZG93XChfaHduZCwgdHJ1ZVwpOycsJyAgICAgICAgaWYgKCFBcHBXaW5kb3cuSXNWaXNpYmxlKSBBcHBXaW5kb3cuU2hvdygpOycKW0lPLkZpbGVdOjpXcml0ZUFsbFRleHQoJHAsJHMpCiRwID0gJ01haW5XaW5kb3cueGFtbCcKJHMgPSBbSU8uRmlsZV06OlJlYWRBbGxUZXh0KCRwKS5SZXBsYWNlKCdHbHlwaD0iJiN4RTEyMTsiJywnR2x5cGg9IiYjeEVBOEY7IicpCltJTy5GaWxlXTo6V3JpdGVBbGxUZXh0KCRwLCRzKQokcCA9ICdpbnN0YWxsZXIvUHJvZ3JhbS5jcycKJHMgPSBbSU8uRmlsZV06OlJlYWRBbGxUZXh0KCRwKS5SZXBsYWNlKCfYp9mE2KXYtdiv2KfYsSAxLjEuMScsJ9in2YTYpdi12K/Yp9ixIDEuMS4yJykKW0lPLkZpbGVdOjpXcml0ZUFsbFRleHQoJHAsJHMpCg=='))
+          ./patch.ps1
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MainWindow.xaml.cs MainWindow.xaml installer/Program.cs
+          git commit -m 'v1.1.2: restore caption buttons, remove window animation, bell icon'
+          git push
+      - name: Publish app
+        shell: pwsh
+        run: |
+          dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -p:DebugType=none -p:Version=1.1.2 -p:AssemblyVersion=1.1.2.0 -p:FileVersion=1.1.2.0 -o publish
+          if ($LASTEXITCODE -ne 0) { throw 'App publish failed' }
+      - name: Build all three packages
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory FluentPrayerTimes-v1.1.2 | Out-Null
+          Copy-Item publish/* FluentPrayerTimes-v1.1.2 -Recurse
+          Copy-Item release/README-ar.txt 'FluentPrayerTimes-v1.1.2/اقرأني.txt'
+          Compress-Archive FluentPrayerTimes-v1.1.2 FluentPrayerTimes-v1.1.2-portable-win-x64.zip
+          Compress-Archive publish/* installer/payload.zip
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o setup
+          if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed' }
+          Copy-Item setup/FluentPrayerTimes-Setup.exe FluentPrayerTimes-v1.1.2-installer-win-x64.exe
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained false -p:DebugType=none -o setup-dependent
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime-dependent publish failed' }
+          Copy-Item setup-dependent/FluentPrayerTimes-Setup.exe FluentPrayerTimes-v1.1.2-installer-.NET-runtime-dependent-win-x64.exe
+      - name: Verify installation, app and actual window pixels
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process ./wari.exe -ArgumentList '--quiet' -Wait
+          $p = Start-Process setup/FluentPrayerTimes-Setup.exe -ArgumentList '--preview',(Join-Path $PWD 'installer-screen.png') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Installer preview failed' }
+          $p = Start-Process setup-dependent/FluentPrayerTimes-Setup.exe -ArgumentList '--verify-install' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Installation failed' }
+          $exe = Join-Path $env:ProgramFiles 'FluentPrayerTimes/FluentPrayerTimes.exe'
+          $p = Start-Process $exe -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) { throw 'App exited early' }
+          Add-Type -AssemblyName System.Drawing
+          [IO.File]::WriteAllBytes('Capture.cs', [Convert]::FromBase64String('dXNpbmcgU3lzdGVtOwp1c2luZyBTeXN0ZW0uUnVudGltZS5JbnRlcm9wU2VydmljZXM7CnB1YmxpYyBjbGFzcyBDYXB0dXJlIHsKICBbU3RydWN0TGF5b3V0KExheW91dEtpbmQuU2VxdWVudGlhbCldIHB1YmxpYyBzdHJ1Y3QgUmVjdCB7cHVibGljIGludCBMLFQsUixCO30KICBbRGxsSW1wb3J0KCJ1c2VyMzIuZGxsIildIHB1YmxpYyBzdGF0aWMgZXh0ZXJuIGJvb2wgR2V0V2luZG93UmVjdChJbnRQdHIgaCwgb3V0IFJlY3Qgcik7CiAgW0RsbEltcG9ydCgidXNlcjMyLmRsbCIpXSBwdWJsaWMgc3RhdGljIGV4dGVybiBib29sIFByaW50V2luZG93KEludFB0ciBoLCBJbnRQdHIgZGMsIHVpbnQgZmxhZ3MpOwogIFtEbGxJbXBvcnQoInVzZXIzMi5kbGwiLEVudHJ5UG9pbnQ9IkdldFdpbmRvd0xvbmdQdHJXIildIHB1YmxpYyBzdGF0aWMgZXh0ZXJuIEludFB0ciBHZXRXaW5kb3dMb25nUHRyKEludFB0ciBoLGludCBpbmRleCk7Cn0='))
+          Add-Type -Path Capture.cs
+          $p.Refresh()
+          $h = $p.MainWindowHandle
+          if ($h -eq 0) { throw 'Main window missing' }
+          $style = [Capture]::GetWindowLongPtr($h,-16).ToInt64()
+          if (($style -band 0x00C00000) -ne 0x00C00000 -or ($style -band 0x00080000) -eq 0 -or ($style -band 0x00020000) -eq 0 -or ($style -band 0x00010000) -eq 0) { throw 'Native caption, system menu or minimize/maximize missing' }
+          $r = New-Object Capture+Rect
+          [Capture]::GetWindowRect($h,[ref]$r) | Out-Null
+          $b = New-Object Drawing.Bitmap ($r.R-$r.L),($r.B-$r.T)
+          $g = [Drawing.Graphics]::FromImage($b)
+          $dc = $g.GetHdc()
+          [Capture]::PrintWindow($h,$dc,2) | Out-Null
+          $g.ReleaseHdc($dc)
+          $b.Save((Join-Path $PWD 'main-window.png'))
+          $g.Dispose(); $b.Dispose()
+          Stop-Process -Id $p.Id -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1.1.2-verified
+          path: |
+            main-window.png
+            installer-screen.png
+            FluentPrayerTimes-v1.1.2-*.exe
+            FluentPrayerTimes-v1.1.2-*.zip
+      - name: Prepare draft for final review
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.1.2 FluentPrayerTimes-v1.1.2-*.zip FluentPrayerTimes-v1.1.2-*.exe --target $(git rev-parse HEAD) --title v1.1.2 --notes 'Restore native caption buttons, remove expand/collapse window animation, bell icon for dhikr reminders. .NET runtime dependent installer requires .NET 8 Desktop Runtime x64 before launch.' --draft
