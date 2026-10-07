@@ -10,6 +10,10 @@ public class Loc {
     public double Lat { get; set; } = 31.2001;
     public double Lon { get; set; } = 29.9187;
     public bool UseCity { get; set; } = true;           // true: timingsByCity, false: coordinates
+    public string CountryAr { get; set; } = "مصر";
+    public string Cc { get; set; } = "EG";               // ISO country code
+    public string? Tz { get; set; }                      // IANA zone of the place (learned from the API)
+    public string Display => string.IsNullOrEmpty(CountryAr) ? NameAr : NameAr + "، " + CountryAr;
     public string Key => UseCity ? "c:" + Name : $"g:{Lat:F3},{Lon:F3}";
 }
 public class Settings {
@@ -19,18 +23,22 @@ public class Settings {
     public string Theme { get; set; } = "system";
     public bool WidgetVisible { get; set; } = false;
     public bool WidgetPinned { get; set; } = true;
+    public int WidgetSnap { get; set; } = 2;   // 0..7: TL, T, TR, L, R, BL, B, BR
     public int WidgetX { get; set; } = int.MinValue;
     public int WidgetY { get; set; } = int.MinValue;       // system | light | dark
+    public bool NotifyAdhan { get; set; } = true;
+    public bool AzkarOn { get; set; } = false;
+    public int AzkarMinutes { get; set; } = 30;
     public string Dst { get; set; } = "auto";           // auto | off | on
     static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
     static string F => Path.Combine(Dir, "settings.json");
     public static Settings Load() { try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
     public void Save() { try { Directory.CreateDirectory(Dir); File.WriteAllText(F, JsonSerializer.Serialize(this)); } catch { } }
     // Timezone sent to Aladhan. auto = the API's own zone for the place (follows Egypt's DST rules)
-    public string? TzParam => Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
+    public string? TzParam => Location.Cc != "EG" ? null : Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
 }
 public record City(string Name, string Ar, double Lat, double Lon);
-public record Day(Dictionary<string, string> T, string Hijri);
+public record Day(Dictionary<string, string> T, string Hijri, string? Tz = null);
 
 public static class Cities {
     public static readonly City[] All = {
@@ -52,7 +60,7 @@ public static class Times {
     public static readonly string[] Keys = { "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha" };
     public static readonly string[] Names = { "الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء" };
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
-    static string CacheFile => Path.Combine(Dir, "cache2.json");
+    static string CacheFile => Path.Combine(Dir, "cache3.json");
     public static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
     static readonly Regex Diac = new("[\u064B-\u0652\u0670]");
     static string CK(Settings s, DateTime d) => $"{s.Location.Key}|{s.Dst}|{d:yyyy-MM-dd}";
@@ -63,7 +71,8 @@ public static class Times {
     static async Task<Day> Fetch(Settings s, DateTime d) {
         var l = s.Location; var inv = CultureInfo.InvariantCulture;
         string tz = s.TzParam != null ? "&timezonestring=" + s.TzParam : "";
-        string byCoords = $"https://api.aladhan.com/v1/timings/{d:dd-MM-yyyy}?latitude={l.Lat.ToString(inv)}&longitude={l.Lon.ToString(inv)}&method=5{tz}";
+        string meth = l.Cc == "EG" ? "&method=5" : "";   // Egypt: Egyptian General Authority of Survey; elsewhere the API picks the local authority
+        string byCoords = $"https://api.aladhan.com/v1/timings/{d:dd-MM-yyyy}?latitude={l.Lat.ToString(inv)}&longitude={l.Lon.ToString(inv)}{meth}{tz}";
         string byCity = $"https://api.aladhan.com/v1/timingsByCity/{d:dd-MM-yyyy}?city={Uri.EscapeDataString(l.Name)}&country=Egypt&method=5{tz}";
         string json;
         if (l.UseCity) { try { json = await Http.GetStringAsync(byCity); } catch { json = await Http.GetStringAsync(byCoords); } }
@@ -74,7 +83,9 @@ public static class Times {
         foreach (var k in Keys) r[k] = t.GetProperty(k).GetString()![..5];
         var h = data.GetProperty("date").GetProperty("hijri");
         string hij = $"{h.GetProperty("day").GetString()!.TrimStart('0')} {Diac.Replace(h.GetProperty("month").GetProperty("ar").GetString()!, "")} {h.GetProperty("year").GetString()} هـ";
-        return new Day(r, hij);
+        string? zone = null;
+        try { zone = data.GetProperty("meta").GetProperty("timezone").GetString(); } catch { }
+        return new Day(r, hij, zone);
     }
     static async Task<Day> Get(Settings s, DateTime d, Dictionary<string, Day> cache) {
         var k = CK(s, d); if (cache.TryGetValue(k, out var c)) return c;
@@ -82,13 +93,25 @@ public static class Times {
     }
     public record Result(Day? Today, Day? Tomorrow, bool Offline);
     public static async Task<Result> Load(Settings s) {
-        var cache = Read(); var now = DateTime.Now; var tom = now.Date.AddDays(1);
+        var cache = Read(); var now = Now(s.Location.Tz); var tom = now.Date.AddDays(1);
         Day? today = null, tomorrow = null; bool off = false;
         try { today = await Get(s, now, cache); } catch { off = true; }
+        if (today?.Tz != null && today.Tz != s.Location.Tz)
+        {
+            s.Location.Tz = today.Tz; s.Save();
+            now = Now(s.Location.Tz); tom = now.Date.AddDays(1);
+            try { today = await Get(s, now, cache); } catch { off = true; }
+        }
         try { tomorrow = await Get(s, tom, cache); } catch { cache.TryGetValue(CK(s, tom), out tomorrow); }
         var keep = cache.Where(kv => kv.Key == CK(s, now) || kv.Key == CK(s, tom)).ToDictionary(kv => kv.Key, kv => kv.Value);
         try { Directory.CreateDirectory(Dir); File.WriteAllText(CacheFile, JsonSerializer.Serialize(keep)); } catch { }
         return new(today, tomorrow, off);
+    }
+    /// <summary>Current wall-clock time in the place's own time zone (falls back to the PC clock).</summary>
+    public static DateTime Now(string? tz)
+    {
+        if (string.IsNullOrEmpty(tz)) return DateTime.Now;
+        try { return TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(tz)); } catch { return DateTime.Now; }
     }
     public static DateTime At(DateTime day, string hm, int add = 0) {
         var p = hm.Split(':'); return day.Date.AddDays(add).AddHours(int.Parse(p[0])).AddMinutes(int.Parse(p[1]));
@@ -109,21 +132,39 @@ public static class Times {
     public static string Fmt(TimeSpan s) { if (s < TimeSpan.Zero) s = TimeSpan.Zero; return $"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}"; }
 
     // ---- location services ----
-    public record Place(string Label, double Lat, double Lon);
-    public static async Task<List<Place>> Search(string q) {
-        var url = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(q)}&count=10&language=ar&format=json&countryCode=EG";
+    public record Place(string Label, double Lat, double Lon, string Name = "", string Country = "", string Cc = "");
+    public static async Task<List<Place>> Search(string q, string? cc = null) {
+        var url = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(q)}&count=15&language=ar&format=json" + (string.IsNullOrEmpty(cc) ? "" : "&countryCode=" + cc);
         using var doc = JsonDocument.Parse(await Http.GetStringAsync(url));
         var res = new List<Place>();
         if (doc.RootElement.TryGetProperty("results", out var arr))
             foreach (var e in arr.EnumerateArray()) {
                 string n = e.GetProperty("name").GetString() ?? "";
                 string a = e.TryGetProperty("admin1", out var ad) ? ad.GetString() ?? "" : "";
-                res.Add(new Place(a == "" ? n : $"{n} - {a}", e.GetProperty("latitude").GetDouble(), e.GetProperty("longitude").GetDouble()));
+                string c = e.TryGetProperty("country", out var co) ? co.GetString() ?? "" : "";
+                string code = e.TryGetProperty("country_code", out var cd) ? cd.GetString() ?? "" : "";
+                string label = n + (a == "" || a == n ? "" : " - " + a) + (c == "" ? "" : " - " + c);
+                res.Add(new Place(label, e.GetProperty("latitude").GetDouble(), e.GetProperty("longitude").GetDouble(), n, c, code.ToUpperInvariant()));
             }
         return res;
     }
+    /// <summary>Reverse geocoding (city + country in Arabic) for a coordinate pair.</summary>
+    public static async Task<(string city, string country, string cc)?> Reverse(double lat, double lon) {
+        try {
+            var inv = CultureInfo.InvariantCulture;
+            var url = $"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat.ToString(inv)}&longitude={lon.ToString(inv)}&localityLanguage=ar";
+            using var doc = JsonDocument.Parse(await Http.GetStringAsync(url));
+            var r = doc.RootElement;
+            string Get(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            string city = Get("city"); if (city == "") city = Get("locality"); if (city == "") city = Get("principalSubdivision");
+            string country = Get("countryName"), cc = Get("countryCode").ToUpperInvariant();
+            if (city == "" && country == "") return null;
+            return (city, country, cc);
+        } catch { return null; }
+    }
     // Windows: real location via the OS (Wi-Fi/GPS) using PowerShell GeoCoordinateWatcher; fallback: IP-based
     public static async Task<(Place? p, string how)> Detect() {
+        double lat = 0, lon = 0; string how = ""; bool ok = false;
         if (OperatingSystem.IsWindows()) {
             try {
                 const string ps = "Add-Type -AssemblyName System.Device; $w=New-Object System.Device.Location.GeoCoordinateWatcher; $w.Start(); $i=0; while(($w.Status -ne 'Ready') -and ($i -lt 60)){Start-Sleep -Milliseconds 250;$i++}; $l=$w.Position.Location; if($l.IsUnknown){exit 2}; [string]::Format([cultureinfo]::InvariantCulture,'{0},{1}',$l.Latitude,$l.Longitude)";
@@ -131,16 +172,23 @@ public static class Times {
                 using var pr = System.Diagnostics.Process.Start(psi)!;
                 var outp = await pr.StandardOutput.ReadToEndAsync(); await pr.WaitForExitAsync();
                 var parts = outp.Trim().Split(',');
-                if (pr.ExitCode == 0 && parts.Length == 2)
-                    return (new Place("موقعك الحالي", double.Parse(parts[0], CultureInfo.InvariantCulture), double.Parse(parts[1], CultureInfo.InvariantCulture)), "نظام الموقع في ويندوز");
+                if (pr.ExitCode == 0 && parts.Length == 2) {
+                    lat = double.Parse(parts[0], CultureInfo.InvariantCulture); lon = double.Parse(parts[1], CultureInfo.InvariantCulture);
+                    how = "نظام الموقع في ويندوز"; ok = true;
+                }
             } catch { }
         }
-        try {
-            using var doc = JsonDocument.Parse(await Http.GetStringAsync("https://ipwho.is/"));
-            var r = doc.RootElement;
-            if (r.GetProperty("success").GetBoolean())
-                return (new Place("موقعك (تقريبي)", r.GetProperty("latitude").GetDouble(), r.GetProperty("longitude").GetDouble()), "عنوان IP (تقريبي)");
-        } catch { }
-        return (null, "");
+        if (!ok) {
+            try {
+                using var doc = JsonDocument.Parse(await Http.GetStringAsync("https://ipwho.is/"));
+                var r = doc.RootElement;
+                if (r.GetProperty("success").GetBoolean()) { lat = r.GetProperty("latitude").GetDouble(); lon = r.GetProperty("longitude").GetDouble(); how = "عنوان IP (تقريبي)"; ok = true; }
+            } catch { }
+        }
+        if (!ok) return (null, "");
+        var rv = await Reverse(lat, lon);
+        if (rv == null) return (new Place("موقعك الحالي", lat, lon, "موقعك الحالي"), how);
+        var (city, country, cc) = rv.Value;
+        return (new Place(city, lat, lon, city == "" ? "موقعك الحالي" : city, country, cc), how);
     }
 }

@@ -11,7 +11,7 @@ on:
       version:
         description: 'Version number, e.g. 1.1.0 (a tag vX.Y.Z will be created)'
         required: true
-        default: '1.0.3'
+        default: '1.1.0'
 
 permissions:
   contents: write
@@ -88,6 +88,8 @@ jobs:
           إذا لم يعمل البرنامج أو طلب بيئة التشغيل (runtime): نزّلها من https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe وثبّتها مرة واحدة.
 
           Requires the Windows App Runtime 1.6 (x64): https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
+
+          **الجديد في 1.1.0:** إشعار الأذان، كل دول العالم مع اسم المدينة والدولة، التقويم الهجري بالمناسبات، محول التاريخ، منبه الأذكار، ويدجت أصغر بخاصية الالتصاق بالمواضع، وبطاقة كبيرة عند التمرير فوق أيقونة منطقة الإشعارات.
 
           فُكّ الضغط وشغّل `FluentPrayerTimes.exe`، ثم ابحث عن أيقونة المئذنة في منطقة الإشعارات. البرنامج غير موقَّع: إذا ظهر SmartScreen فاضغط More info ثم Run anyway.
           NOTES

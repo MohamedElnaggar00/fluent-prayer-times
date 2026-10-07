@@ -14,7 +14,19 @@ public sealed partial class WidgetWindow : Window
     [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out CurPt p);
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
     [StructLayout(LayoutKind.Sequential)] struct CurPt { public int X, Y; }
+
+    // 8 snap positions: TL, T, TR, L, R, BL, B, BR (fractions of the free area of the work area)
+    static readonly (double fx, double fy)[] Anchors = { (0, 0), (0.5, 0), (1, 0), (0, 0.5), (1, 0.5), (0, 1), (0.5, 1), (1, 1) };
+    readonly IntPtr _hwnd;
+    bool _wantVisible;
+    Microsoft.UI.Dispatching.DispatcherQueueTimer? _keep;
 
     readonly Settings _s;
     bool _drag;
@@ -31,9 +43,10 @@ public sealed partial class WidgetWindow : Window
         SystemBackdrop = new DesktopAcrylicBackdrop();
 
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _hwnd = hwnd;
         double dpi = GetDpiForWindow(hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        int w = (int)(300 * dpi), h = (int)(160 * dpi);
+        int w = (int)(150 * dpi), h = (int)(80 * dpi);
 
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
@@ -48,15 +61,64 @@ public sealed partial class WidgetWindow : Window
         BtnPin.IsChecked = _s.WidgetPinned;
         AppWindow.Closing += (a, e) => { e.Cancel = true; a.Hide(); };
 
-        int x, y;
-        if (_s.WidgetX != int.MinValue && _s.WidgetY != int.MinValue) { x = _s.WidgetX; y = _s.WidgetY; }
-        else
+        // tool window: no taskbar button, never takes focus
+        long ex = (long)GetWindowLongPtr(hwnd, -20);
+        SetWindowLongPtr(hwnd, -20, (IntPtr)(ex | 0x80 | 0x08000000));
+        AppWindow.Resize(new SizeInt32(w, h));
+        ApplySnap(Math.Clamp(_s.WidgetSnap, 0, 7));
+
+        // "Show desktop" minimises/hides every window: bring the widget straight back.
+        _keep = DispatcherQueue.CreateTimer();
+        _keep.Interval = TimeSpan.FromMilliseconds(400);
+        _keep.Tick += (a, b) => KeepAlive();
+        _keep.Start();
+    }
+
+    void KeepAlive()
+    {
+        if (!_wantVisible) return;
+        try
         {
-            var wa = DisplayArea.Primary.WorkArea;
-            x = wa.X + wa.Width - w - (int)(24 * dpi);
-            y = wa.Y + (int)(24 * dpi);
+            if (IsIconic(_hwnd) || !IsWindowVisible(_hwnd))
+            {
+                ShowWindow(_hwnd, 4); // SW_SHOWNOACTIVATE
+                WindowChrome.Apply(_hwnd);
+            }
+            // SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE; topmost when pinned
+            if (_s.WidgetPinned) SetWindowPos(_hwnd, new IntPtr(-1), 0, 0, 0, 0, 0x2 | 0x1 | 0x10);
         }
-        AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
+        catch { }
+    }
+
+    void ApplySnap(int idx)
+    {
+        try
+        {
+            var pos = AppWindow.Position; var sz = AppWindow.Size;
+            var wa = DisplayArea.GetFromRect(new RectInt32(pos.X, pos.Y, sz.Width, sz.Height), DisplayAreaFallback.Nearest).WorkArea;
+            double dpi = Math.Max(1, GetDpiForWindow(_hwnd) / 96.0);
+            int m = (int)(12 * dpi);
+            var (fx, fy) = Anchors[idx];
+            int x = wa.X + m + (int)(fx * (wa.Width - sz.Width - 2 * m));
+            int y = wa.Y + m + (int)(fy * (wa.Height - sz.Height - 2 * m));
+            AppWindow.Move(new PointInt32(x, y));
+        }
+        catch { }
+    }
+
+    void SnapNearest()
+    {
+        var pos = AppWindow.Position; var sz = AppWindow.Size;
+        var wa = DisplayArea.GetFromRect(new RectInt32(pos.X, pos.Y, sz.Width, sz.Height), DisplayAreaFallback.Nearest).WorkArea;
+        double cx = (pos.X + sz.Width / 2.0 - wa.X) / wa.Width, cy = (pos.Y + sz.Height / 2.0 - wa.Y) / wa.Height;
+        int best = 2; double bd = double.MaxValue;
+        for (int i = 0; i < Anchors.Length; i++)
+        {
+            double d = Math.Pow(cx - (0.08 + 0.84 * Anchors[i].fx), 2) + Math.Pow(cy - (0.12 + 0.76 * Anchors[i].fy), 2);
+            if (d < bd) { bd = d; best = i; }
+        }
+        _s.WidgetSnap = best; _s.Save();
+        ApplySnap(best);
     }
 
     public void SetInfo(string name, string time, string count)
@@ -64,8 +126,8 @@ public sealed partial class WidgetWindow : Window
         TxtName.Text = name; TxtTime.Text = time; TxtCount.Text = count;
     }
 
-    public void ShowWidget() { AppWindow.Show(); WindowChrome.Apply(WinRT.Interop.WindowNative.GetWindowHandle(this)); Activate(); }
-    public void HideWidget() { AppWindow.Hide(); }
+    public void ShowWidget() { _wantVisible = true; ApplySnap(Math.Clamp(_s.WidgetSnap, 0, 7)); AppWindow.Show(); WindowChrome.Apply(_hwnd); }
+    public void HideWidget() { _wantVisible = false; AppWindow.Hide(); }
 
     void Surface_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -86,9 +148,7 @@ public sealed partial class WidgetWindow : Window
         if (!_drag) return;
         _drag = false;
         Surface.ReleasePointerCapture(e.Pointer);
-        _s.WidgetX = AppWindow.Position.X;
-        _s.WidgetY = AppWindow.Position.Y;
-        _s.Save();
+        SnapNearest();
     }
 
     void Pin_Click(object sender, RoutedEventArgs e)

@@ -6,9 +6,9 @@ namespace FluentPrayerTimes;
 sealed class TrayIcon : IDisposable
 {
     const uint WM_TRAY = 0x8001;
-    const uint WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
+    const uint WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205, WM_MOUSEMOVE = 0x0200;
     const uint NIM_ADD = 0, NIM_MODIFY = 1, NIM_DELETE = 2;
-    const uint NIF_MESSAGE = 1, NIF_ICON = 2, NIF_TIP = 4;
+    const uint NIF_MESSAGE = 1, NIF_ICON = 2, NIF_TIP = 4, NIF_INFO = 0x10;
 
     delegate IntPtr SubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, UIntPtr id, UIntPtr data);
 
@@ -28,6 +28,7 @@ sealed class TrayIcon : IDisposable
     [StructLayout(LayoutKind.Sequential)] struct NOTIFYICONIDENTIFIER { public uint cbSize; public IntPtr hWnd; public uint uID; public Guid guidItem; }
     [DllImport("shell32.dll")] static extern int Shell_NotifyIconGetRect(ref NOTIFYICONIDENTIFIER id, out RECT r);
 
+    public bool NativeTip = false;   // the custom hover card replaces the system tooltip
     int _lastX = int.MinValue, _lastY = int.MinValue;
 
     /// <summary>Center of the tray icon on screen (physical pixels). Falls back to the cursor position at the last tray event.</summary>
@@ -67,6 +68,7 @@ sealed class TrayIcon : IDisposable
     readonly Action _onClick;
     readonly Action<int> _onMenu;
     readonly Func<int, int, bool>? _onContext;
+    public Action? OnHover;
     readonly (int id, string text)[] _items;
     readonly SubclassProc _proc;
     readonly uint _taskbarCreated;
@@ -95,8 +97,20 @@ sealed class TrayIcon : IDisposable
 
     void Add() { var d = Data(NIF_MESSAGE | NIF_ICON | NIF_TIP); _added = Shell_NotifyIconW(NIM_ADD, ref d); }
 
+    /// <summary>Shows a Windows notification (balloon/toast) from the tray icon.</summary>
+    public void Notify(string title, string text)
+    {
+        if (!_added) return;
+        if (title.Length > 60) title = title[..60];
+        if (text.Length > 250) text = text[..250];
+        var d = Data(NIF_INFO);
+        d.szInfoTitle = title; d.szInfo = text; d.dwInfoFlags = 0;
+        Shell_NotifyIconW(NIM_MODIFY, ref d);
+    }
+
     public void SetTip(string tip)
     {
+        if (!NativeTip) return;
         if (tip.Length > 120) tip = tip[..120];
         if (tip == _tip) return;
         _tip = tip;
@@ -111,7 +125,8 @@ sealed class TrayIcon : IDisposable
         {
             uint ev = (uint)((long)l & 0xFFFF);
             if (GetCursorPos(out var lp)) { _lastX = lp.x; _lastY = lp.y; }
-            if (ev == WM_LBUTTONUP) _onClick();
+            if (ev == WM_MOUSEMOVE) { try { OnHover?.Invoke(); } catch { } }
+            else if (ev == WM_LBUTTONUP) _onClick();
             else if (ev == WM_RBUTTONUP)
             {
                 bool ok = false;

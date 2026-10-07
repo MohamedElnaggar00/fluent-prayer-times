@@ -27,6 +27,8 @@ public sealed partial class MainWindow : Window
     readonly IntPtr _hwnd;
     readonly TrayIcon _tray;
     readonly TrayMenuWindow _menu;
+    readonly HoverWindow _hover;
+    string _hTitle = "", _hCount = "--:--:--", _hUnit = "", _hSub = "";
     readonly DispatcherQueueTimer _timer;
     readonly TextBlock[] _rowName = new TextBlock[6];
     readonly TextBlock[] _rowTime = new TextBlock[6];
@@ -38,6 +40,8 @@ public sealed partial class MainWindow : Window
     bool _loading = true;
     bool _quit;
     int _hl = -2;
+    string _lastAdhan = "";
+    DateTime _azkarNext = DateTime.MaxValue;
 
     public MainWindow(bool startHidden)
     {
@@ -63,6 +67,10 @@ public sealed partial class MainWindow : Window
         catch { }
         RootGrid.SizeChanged += (s2, e2) => FitPages();
         BuildRows();
+        PanelCalendar.Children.Add(new CalendarPage());
+        PanelConvert.Children.Add(new ConverterPage());
+        PanelAzkar.Children.Add(new AzkarPage(_s, OnAzkarChanged));
+        _azkarNext = _s.AzkarOn ? DateTime.Now.AddMinutes(Math.Max(1, _s.AzkarMinutes)) : DateTime.MaxValue;
         LoadSettingsUi();
         ApplyAppearance();
         Nav.SelectedItem = Nav.MenuItems[0];
@@ -72,6 +80,24 @@ public sealed partial class MainWindow : Window
         _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, "app.ico"),
             new[] { (CmdOpen, "فتح"), (CmdWidget, "ويدجت سطح المكتب"), (CmdSettings, "الإعدادات"), (CmdExit, "خروج") },
             ToggleFlyout, OnMenu, OnContext);
+
+        _hover = new HoverWindow(() =>
+        {
+            if (!_tray.TryGetAnchor(out int hx, out int hy) || !GetCursorPos(out var cp)) return false;
+            double d = Math.Max(1, GetDpiForWindow(_hwnd) / 96.0);
+            return Math.Abs(cp.X - hx) <= 18 * d && Math.Abs(cp.Y - hy) <= 18 * d;
+        });
+        _tray.OnHover = () =>
+        {
+            if (_hover.Shown) return;
+            if (!_tray.TryGetAnchor(out int hx, out int hy))
+            {
+                if (!GetCursorPos(out var c)) return;
+                hx = c.X; hy = c.Y;
+            }
+            _hover.Update(_hTitle, _hCount, _hUnit, _hSub);
+            _hover.ShowAt(hx, hy, _s.Theme);
+        };
 
         _timer = DispatcherQueue.CreateTimer();
         _timer.Interval = TimeSpan.FromSeconds(1);
@@ -88,6 +114,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            _hover.Hide();
             if (_tray.TryGetAnchor(out var ax, out var ay)) { x = ax; y = ay; }
             _menu.ShowAt(x, y, _s.Theme, _s.WidgetVisible);
             return true;
@@ -137,6 +164,7 @@ public sealed partial class MainWindow : Window
     void Quit()
     {
         _quit = true;
+        _hover.Hide();
         _timer.Stop();
         _tray.Dispose();
         Application.Current.Exit();
@@ -145,6 +173,7 @@ public sealed partial class MainWindow : Window
 
     void ToggleFlyout()
     {
+        _hover.Hide();
         bool minimized = (AppWindow.Presenter as OverlappedPresenter)?.State == OverlappedPresenterState.Minimized;
         if (AppWindow.IsVisible && !minimized) AppWindow.Hide();
         else ShowFlyout(true);
@@ -211,8 +240,9 @@ public sealed partial class MainWindow : Window
         double avail = RootGrid.ActualWidth - 48;
         if (avail < 200) avail = 200;
         double w = Math.Max(200, Math.Min(560, avail - 32));
-        foreach (var sv in new[] { PageTimes, PageSettings, PageAbout }) sv.MaxWidth = avail;
+        foreach (var sv in new[] { PageTimes, PageSettings, PageAbout, PageCalendar, PageConvert, PageAzkar }) sv.MaxWidth = avail;
         PanelTimes.Width = w; PanelSettings.Width = w; PanelAbout.Width = w;
+        PanelCalendar.Width = w; PanelConvert.Width = w; PanelAzkar.Width = w;
     }
 
     void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -221,6 +251,9 @@ public sealed partial class MainWindow : Window
         PageTimes.Visibility = tag == "times" ? Visibility.Visible : Visibility.Collapsed;
         PageSettings.Visibility = tag == "settings" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = tag == "about" ? Visibility.Visible : Visibility.Collapsed;
+        PageCalendar.Visibility = tag == "calendar" ? Visibility.Visible : Visibility.Collapsed;
+        PageConvert.Visibility = tag == "convert" ? Visibility.Visible : Visibility.Collapsed;
+        PageAzkar.Visibility = tag == "azkar" ? Visibility.Visible : Visibility.Collapsed;
         FitPages();
     }
 
@@ -250,33 +283,64 @@ public sealed partial class MainWindow : Window
         _res = r;
         if (r.Today != null)
         {
-            _loadedDay = DateTime.Now.Date;
+            _loadedDay = Times.Now(_s.Location.Tz).Date;
             for (int i = 0; i < 6; i++) _rowTime[i].Text = Times.F12(r.Today.T[Times.Keys[i]]);
         }
-        TxtCity.Text = _s.Location.NameAr;
+        TxtCity.Text = _s.Location.Display;
         var ar = new CultureInfo("ar-EG");
-        string greg = DateTime.Now.ToString("dddd d MMMM yyyy", ar);
+        string greg = Times.Now(_s.Location.Tz).ToString("dddd d MMMM yyyy", ar);
         TxtDates.Text = r.Today != null ? greg + "  -  " + r.Today.Hijri : greg;
         TxtStatus.Text = r.Today == null ? "لا يوجد اتصال ولا مواقيت محفوظة" : (r.Offline ? "دون اتصال - من آخر بيانات محفوظة" : "");
         _hl = -2;
         Tick();
     }
 
+    void OnAzkarChanged()
+    {
+        _azkarNext = _s.AzkarOn ? DateTime.Now.AddMinutes(Math.Max(1, _s.AzkarMinutes)) : DateTime.MaxValue;
+    }
+
+    void Adhan_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _s.NotifyAdhan = TglAdhan.IsOn;
+        _s.Save();
+    }
+
     void Tick()
     {
-        var now = DateTime.Now;
+        if (DateTime.Now >= _azkarNext)
+        {
+            _azkarNext = DateTime.Now.AddMinutes(Math.Max(1, _s.AzkarMinutes));
+            try { _tray.Notify("منبه الأذكار", AzkarData.RandomShort().Text); } catch { }
+        }
+        var now = Times.Now(_s.Location.Tz);
         bool stale = _loadedDay != now.Date || _res?.Today == null;
         if (stale && (now - _lastTry).TotalSeconds > (_res?.Today == null ? 300 : 5)) _ = ReloadAsync();
 
         if (_res?.Today == null)
         {
             TxtNextName.Text = "--"; TxtNextTime.Text = ""; TxtCountdown.Text = "--:--:--"; TxtUnit.Text = "";
-            _tray.SetTip("مواقيت الصلاة");
+            SetHover("مواقيت الصلاة", "--:--:--", "", _s.Location.Display);
             PushWidget("--", "", "--:--:--");
             return;
         }
+        if (_s.NotifyAdhan)
+        {
+            for (int i = 0; i < Times.Keys.Length; i++)
+            {
+                if (i == 1) continue; // sunrise is not an adhan
+                var pt = Times.At(now, _res.Today.T[Times.Keys[i]]);
+                var key = now.ToString("yyyyMMdd") + "-" + i;
+                if (now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
+                {
+                    _lastAdhan = key;
+                    try { _tray.Notify("مواقيت الصلاة", "حان الآن موعد أذان " + Times.Names[i]); } catch { }
+                }
+            }
+        }
         var nx = Times.Next(now, _res.Today.T, _res.Tomorrow?.T);
-        if (nx == null) { TxtNextName.Text = "--"; TxtCountdown.Text = "--:--:--"; TxtUnit.Text = ""; _tray.SetTip("مواقيت الصلاة"); return; }
+        if (nx == null) { TxtNextName.Text = "--"; TxtCountdown.Text = "--:--:--"; TxtUnit.Text = ""; SetHover("مواقيت الصلاة", "--:--:--", "", _s.Location.Display); return; }
         var (idx, time, tomorrow) = nx.Value;
         var left = time - now;
         TxtNextName.Text = Times.Names[idx] + (tomorrow ? " (غدًا)" : "");
@@ -284,7 +348,8 @@ public sealed partial class MainWindow : Window
         var (cnum, cunit) = Times.FmtDyn(left);
         TxtCountdown.Text = cnum; TxtUnit.Text = cunit;
         PushWidget(TxtNextName.Text, TxtNextTime.Text, cnum + " " + cunit);
-        _tray.SetTip((idx == 1 ? "باقي على الشروق: " : "باقي على صلاة " + Times.Names[idx] + ": ") + Times.Fmt(left));
+        SetHover(idx == 1 ? "باقي على الشروق" : "باقي على صلاة " + Times.Names[idx] + (tomorrow ? " (غدًا)" : ""), cnum, cunit,
+                 Times.Names[idx] + " " + TxtNextTime.Text + "  -  " + _s.Location.Display);
 
         int hl = tomorrow ? -1 : idx;
         if (hl != _hl)
@@ -301,6 +366,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    void SetHover(string title, string count, string unit, string sub)
+    {
+        _hTitle = title; _hCount = count; _hUnit = unit; _hSub = sub;
+        if (_hover.Shown) _hover.Update(title, count, unit, sub);
+    }
+
     void PushWidget(string n, string t, string c)
     {
         _wName = n; _wTime = t; _wCount = c;
@@ -310,6 +381,9 @@ public sealed partial class MainWindow : Window
     // ---------- settings ----------
     void LoadSettingsUi()
     {
+        CmbCountry.Items.Add("كل دول العالم");
+        foreach (var c in Countries.All) CmbCountry.Items.Add(c.Ar);
+        TglAdhan.IsOn = _s.NotifyAdhan;
         foreach (var c in Cities.All) CmbCity.Items.Add(c.Ar);
         SyncCitySelection();
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
@@ -326,6 +400,8 @@ public sealed partial class MainWindow : Window
         bool was = _loading; _loading = true;
         int i = _s.Location.UseCity ? Array.FindIndex(Cities.All, c => c.Name == _s.Location.Name) : -1;
         CmbCity.SelectedIndex = i;
+        int ci = Array.FindIndex(Countries.All, c => c.Cc == _s.Location.Cc);
+        CmbCountry.SelectedIndex = ci < 0 ? 0 : ci + 1;
         if (i < 0) CmbCity.PlaceholderText = _s.Location.NameAr;
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
         TxtLon.Text = _s.Location.Lon.ToString("F4", CultureInfo.InvariantCulture);
@@ -339,11 +415,21 @@ public sealed partial class MainWindow : Window
         _ = ReloadAsync();
     }
 
+    void Country_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || CmbCountry.SelectedIndex <= 0) return;
+        var k = Countries.All[CmbCountry.SelectedIndex - 1];
+        if (k.Cc == _s.Location.Cc && !_s.Location.UseCity && false) return;
+        if (k.Cc == "EG") _s.Location = new Loc { Name = "Cairo", NameAr = "القاهرة", Lat = 30.0444, Lon = 31.2357, UseCity = true };
+        else _s.Location = new Loc { Name = k.Capital, NameAr = k.Capital, Lat = k.Lat, Lon = k.Lon, UseCity = false, CountryAr = k.Ar, Cc = k.Cc };
+        LocationChanged();
+    }
+
     void City_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || CmbCity.SelectedIndex < 0) return;
         var c = Cities.All[CmbCity.SelectedIndex];
-        _s.Location = new Loc { Name = c.Name, NameAr = c.Ar, Lat = c.Lat, Lon = c.Lon, UseCity = true };
+        _s.Location = new Loc { Name = c.Name, NameAr = c.Ar, Lat = c.Lat, Lon = c.Lon, UseCity = true, CountryAr = "مصر", Cc = "EG" };
         LocationChanged();
     }
 
@@ -358,7 +444,8 @@ public sealed partial class MainWindow : Window
         if (q.Length < 2) return;
         try
         {
-            _places = await Times.Search(q);
+            string? cc = CmbCountry.SelectedIndex > 0 ? Countries.All[CmbCountry.SelectedIndex - 1].Cc : null;
+            _places = await Times.Search(q, cc);
             _loading = true;
             LstPlaces.ItemsSource = _places.Select(p => p.Label).ToList();
             _loading = false;
@@ -372,7 +459,7 @@ public sealed partial class MainWindow : Window
     {
         if (_loading || LstPlaces.SelectedIndex < 0 || LstPlaces.SelectedIndex >= _places.Count) return;
         var p = _places[LstPlaces.SelectedIndex];
-        _s.Location = new Loc { Name = p.Label, NameAr = p.Label, Lat = p.Lat, Lon = p.Lon, UseCity = false };
+        _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
         LstPlaces.Visibility = Visibility.Collapsed;
         LocationChanged();
     }
@@ -382,18 +469,20 @@ public sealed partial class MainWindow : Window
         TxtDetect.Text = "جارٍ تحديد موقعك...";
         var (p, how) = await Times.Detect();
         if (p == null) { TxtDetect.Text = "تعذّر تحديد الموقع"; return; }
-        _s.Location = new Loc { Name = p.Label, NameAr = p.Label, Lat = p.Lat, Lon = p.Lon, UseCity = false };
+        _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
         TxtDetect.Text = "تم: " + how;
         LocationChanged();
     }
 
-    void Coords_Click(object sender, RoutedEventArgs e)
+    async void Coords_Click(object sender, RoutedEventArgs e)
     {
         if (double.TryParse(TxtLat.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var la) &&
             double.TryParse(TxtLon.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var lo) &&
             la >= -90 && la <= 90 && lo >= -180 && lo <= 180)
         {
-            _s.Location = new Loc { Name = "إحداثيات", NameAr = $"إحداثيات ({la:F3}, {lo:F3})", Lat = la, Lon = lo, UseCity = false };
+            var rv = await Times.Reverse(la, lo);
+            string nm = rv != null && rv.Value.city != "" ? rv.Value.city : $"إحداثيات ({la:F3}, {lo:F3})";
+            _s.Location = new Loc { Name = nm, NameAr = nm, Lat = la, Lon = lo, UseCity = false, CountryAr = rv?.country ?? "", Cc = rv?.cc ?? "" };
             LocationChanged();
         }
         else TxtDetect.Text = "إحداثيات غير صحيحة";

@@ -24,6 +24,15 @@
                 <NavigationViewItem Content="المواقيت" Tag="times">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE823;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="التقويم الهجري" Tag="calendar">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE787;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="محول التاريخ" Tag="convert">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8AB;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="منبه الأذكار" Tag="azkar">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE121;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem Content="الإعدادات" Tag="settings">
@@ -76,6 +85,17 @@
                     </StackPanel>
                 </ScrollViewer>
 
+                <!-- ===== Calendar / converter / azkar pages (built in code) ===== -->
+                <ScrollViewer x:Name="PageCalendar" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
+                    <StackPanel x:Name="PanelCalendar" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                </ScrollViewer>
+                <ScrollViewer x:Name="PageConvert" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
+                    <StackPanel x:Name="PanelConvert" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                </ScrollViewer>
+                <ScrollViewer x:Name="PageAzkar" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
+                    <StackPanel x:Name="PanelAzkar" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                </ScrollViewer>
+
                 <!-- ===== Settings page ===== -->
                 <ScrollViewer x:Name="PageSettings" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
                     <StackPanel x:Name="PanelSettings" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft">
@@ -108,9 +128,11 @@
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="الموقع" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Text="المدينة" FontWeight="SemiBold" />
+                                <TextBlock Text="الدولة" FontWeight="SemiBold" />
+                                <ComboBox x:Name="CmbCountry" HorizontalAlignment="Stretch" SelectionChanged="Country_Changed" />
+                                <TextBlock Text="المدن المصرية" FontWeight="SemiBold" Margin="0,6,0,0" />
                                 <ComboBox x:Name="CmbCity" HorizontalAlignment="Stretch" SelectionChanged="City_Changed" />
-                                <TextBlock Text="البحث عن مكان في مصر" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <TextBlock Text="البحث عن أي مدينة أو منطقة (في الدولة المختارة أو في كل العالم)" FontWeight="SemiBold" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -153,6 +175,16 @@
                                 <TextBlock Text="ويدجت سطح المكتب" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="نافذة صغيرة عائمة تعرض الصلاة القادمة والعدّاد، يمكن تحريكها بالسحب وتثبيتها فوق النوافذ." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <ToggleSwitch x:Name="TglWidget" OnContent="ظاهر" OffContent="مخفي" Toggled="Widget_Toggled" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="الإشعارات" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="إشعار عند دخول وقت كل صلاة: حان الآن موعد أذان ..." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <ToggleSwitch x:Name="TglAdhan" OnContent="مفعّل" OffContent="متوقف" Toggled="Adhan_Toggled" />
                             </StackPanel>
                         </Border>
 
