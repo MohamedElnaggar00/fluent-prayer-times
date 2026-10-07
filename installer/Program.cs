@@ -53,7 +53,7 @@ static class Program
         var about = new StackPanel { Margin = new Thickness(20), HorizontalAlignment = HorizontalAlignment.Center };
         about.Children.Add(new Border { Width = 104, Height = 104, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(0,103,192)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,14), Child = new Image { Width = 72, Height = 72, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")) } });
         about.Children.Add(Text("برنامج مواقيت الصلاة", 24));
-        about.Children.Add(Text("الإصدار 1.1.1", 14));
+        about.Children.Add(Text("الإصدار 1.1.2", 14));
         about.Children.Add(Text("brought to you by app.instinct AI", 14));
         about.Children.Add(Text("المطور: محمد النجار", 14));
         panel.Children.Add(new Border { CornerRadius = new CornerRadius(12), Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(224,224,230)), BorderThickness = new Thickness(1), Child = about });

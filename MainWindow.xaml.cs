@@ -55,7 +55,7 @@ public sealed partial class MainWindow : Window
         if (dpi < 1) dpi = 1;
         AppWindow.Resize(new SizeInt32((int)(470 * dpi), (int)(610 * dpi)));
         try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "app.ico")); } catch { }
-        AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; NativeMotion.Window(_hwnd, false); } };
+        AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; AppWindow.Hide(); } };
 
         try
         {
@@ -171,7 +171,7 @@ public sealed partial class MainWindow : Window
     {
         _hover.Hide();
         bool minimized = (AppWindow.Presenter as OverlappedPresenter)?.State == OverlappedPresenterState.Minimized;
-        if (AppWindow.IsVisible && !minimized) NativeMotion.Window(_hwnd, false);
+        if (AppWindow.IsVisible && !minimized) AppWindow.Hide();
         else ShowFlyout(true);
     }
 
@@ -179,8 +179,7 @@ public sealed partial class MainWindow : Window
     {
         if (AppWindow.Presenter is OverlappedPresenter p && p.State == OverlappedPresenterState.Minimized) p.Restore();
         Place(nearCursor);
-        WindowChrome.Apply(_hwnd);
-        if (!AppWindow.IsVisible) NativeMotion.Window(_hwnd, true);
+        if (!AppWindow.IsVisible) AppWindow.Show();
         Activate();
         SetForegroundWindow(_hwnd);
     }
