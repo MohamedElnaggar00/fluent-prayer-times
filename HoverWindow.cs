@@ -51,6 +51,7 @@ sealed class HoverWindow : Window
     int _miss;
     readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _delay;
     long _entered;
+    int _hoverDelay;
     Action? _pending;
     bool _below;
     public bool Shown { get; private set; }
@@ -90,7 +91,7 @@ sealed class HoverWindow : Window
         _delay.Tick += (a, b) =>
         {
             if (!_overTray()) { CancelPending(); return; }
-            if (Environment.TickCount64 - _entered < NativeMotion.HoverDelay()) return;
+            if (Environment.TickCount64 - _entered < _hoverDelay) return;
             var show = _pending;
             CancelPending();
             show?.Invoke();
@@ -100,7 +101,7 @@ sealed class HoverWindow : Window
     public void RequestShow(Action show)
     {
         if (Shown || _delay.IsRunning) return;
-        _pending = show; _entered = Environment.TickCount64; _delay.Start();
+        _pending = show; _hoverDelay = NativeMotion.HoverDelay(); _entered = Environment.TickCount64; _delay.Start();
     }
 
     void CancelPending() { _delay.Stop(); _pending = null; }

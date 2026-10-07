@@ -44,6 +44,7 @@ static class Program
             catch (Exception e) { MessageBox.Show("تعذرت الإزالة: " + e.Message, Product); }
             return;
         }
+        if (args.Contains("--verify-install")) { Install(_ => { }); return; }
         var app = new Application();
         var window = new Window { Title = Product + " - تثبيت", Width = 490, Height = 555, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(243,243,246)), FontFamily = new FontFamily("Segoe UI"), FlowDirection = FlowDirection.RightToLeft };
         window.SourceInitialized += (_, _) => { var h = new WindowInteropHelper(window).Handle; int backdrop = 2, corner = 2; try { DwmSetWindowAttribute(h, 38, ref backdrop, 4); DwmSetWindowAttribute(h, 33, ref corner, 4); } catch { } };
@@ -79,6 +80,15 @@ static class Program
             finally { busy = false; }
         };
         window.Content = panel;
+        if (args.Length == 2 && args[0] == "--preview")
+        {
+            panel.Width = 434; panel.Height = 495;
+            panel.Measure(new Size(434,495)); panel.Arrange(new Rect(0,0,434,495)); panel.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(434,495,96,96,PixelFormats.Pbgra32);
+            bitmap.Render(panel);
+            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(args[1]); encoder.Save(file); return;
+        }
         app.Run(window);
     }
     static TextBlock Text(string text, double size) => new() { Text = text, FontSize = size, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, FlowDirection = FlowDirection.LeftToRight, Margin = new Thickness(0,4,0,4) };
@@ -116,7 +126,7 @@ static class Program
         if (!Environment.Is64BitOperatingSystem) throw new Exception("يتطلب البرنامج Windows x64.");
         status("جارٍ فحص المتطلبات...");
         if (!DotNetPresent()) { status("جارٍ تنزيل وتثبيت .NET 8..."); Dependency("https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe", "/install /quiet /norestart"); if (!DotNetPresent()) throw new Exception("لم يكتمل تثبيت .NET 8."); }
-        if (!VcPresent()) { status("جارٍ تنزيل وتثبيت Visual C++..."); Dependency("https://aka.ms/vs/17/release/vc_redist.x64.exe", "/install /quiet /norestart"); if (!VcPresent()) throw new Exception("لم يكتمل تثبيت Visual C++."); }
+        if (!VcPresent()) { status("جارٍ تنزيل وتثبيت Visual C++..."); Dependency("https://aka.ms/vc14/vc_redist.x64.exe", "/install /quiet /norestart"); if (!VcPresent()) throw new Exception("لم يكتمل تثبيت Visual C++."); }
         if (!WarPresent()) { status("جارٍ تنزيل وتثبيت Windows App Runtime 1.6..."); Dependency("https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe", "--quiet"); if (!WarPresent()) throw new Exception("لم يكتمل تثبيت Windows App Runtime 1.6."); }
         status("جارٍ تثبيت ملفات البرنامج...");
         StopApp(); Directory.CreateDirectory(Target);
