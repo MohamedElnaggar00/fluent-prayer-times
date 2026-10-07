@@ -46,7 +46,7 @@ public sealed partial class WidgetWindow : Window
         _hwnd = hwnd;
         double dpi = GetDpiForWindow(hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        int w = (int)(150 * dpi), h = (int)(80 * dpi);
+        int w = (int)(180 * dpi), h = (int)(96 * dpi);
 
         if (AppWindow.Presenter is OverlappedPresenter p)
         {

@@ -17,13 +17,17 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Product>Fluent Prayer Times</Product>
     <Company>Mohamed Elnaggar</Company>
     <Authors>Mohamed Elnaggar</Authors>
     <Description>Fluent Prayer Times - برنامج مواقيت الصلاة</Description>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="installer/**/*.cs" />
+    <Page Remove="installer/**/*.xaml" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
   </ItemGroup>

@@ -49,6 +49,10 @@ sealed class HoverWindow : Window
     readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _timer;
     readonly Func<bool> _overTray;
     int _miss;
+    readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _delay;
+    long _entered;
+    Action? _pending;
+    bool _below;
     public bool Shown { get; private set; }
 
     public HoverWindow(Func<bool> overTray)
@@ -81,7 +85,25 @@ sealed class HoverWindow : Window
         _timer = DispatcherQueue.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(200);
         _timer.Tick += (a, b) => Watch();
+        _delay = DispatcherQueue.CreateTimer();
+        _delay.Interval = TimeSpan.FromMilliseconds(50);
+        _delay.Tick += (a, b) =>
+        {
+            if (!_overTray()) { CancelPending(); return; }
+            if (Environment.TickCount64 - _entered < NativeMotion.HoverDelay()) return;
+            var show = _pending;
+            CancelPending();
+            show?.Invoke();
+        };
     }
+
+    public void RequestShow(Action show)
+    {
+        if (Shown || _delay.IsRunning) return;
+        _pending = show; _entered = Environment.TickCount64; _delay.Start();
+    }
+
+    void CancelPending() { _delay.Stop(); _pending = null; }
 
     public void Update(string title, string count, string unit, string sub)
     {
@@ -114,7 +136,8 @@ sealed class HoverWindow : Window
         int x = Math.Clamp(ax - w / 2, wa.X + 8, wa.X + wa.Width - w - 8);
         int y = ay > wa.Y + wa.Height / 2 ? wa.Y + wa.Height - h - 8 : wa.Y + 8;
         AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
-        ShowWindow(_hwnd, 4); // SW_SHOWNOACTIVATE
+        _below = y > ay;
+        NativeMotion.Tooltip(_hwnd, true, _below);
         WindowChrome.Apply(_hwnd);
         Shown = true;
         _timer.Start();
@@ -122,8 +145,10 @@ sealed class HoverWindow : Window
 
     public void Hide()
     {
-        Shown = false;
+        CancelPending();
         _timer.Stop();
-        try { AppWindow.Hide(); } catch { }
+        if (!Shown) return;
+        Shown = false;
+        NativeMotion.Tooltip(_hwnd, false, _below);
     }
 }

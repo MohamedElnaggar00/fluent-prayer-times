@@ -55,7 +55,7 @@ public sealed partial class MainWindow : Window
         if (dpi < 1) dpi = 1;
         AppWindow.Resize(new SizeInt32((int)(470 * dpi), (int)(610 * dpi)));
         try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "app.ico")); } catch { }
-        AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; s.Hide(); } };
+        AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; NativeMotion.Window(_hwnd, false); } };
 
         try
         {
@@ -87,17 +87,13 @@ public sealed partial class MainWindow : Window
             double d = Math.Max(1, GetDpiForWindow(_hwnd) / 96.0);
             return Math.Abs(cp.X - hx) <= 18 * d && Math.Abs(cp.Y - hy) <= 18 * d;
         });
-        _tray.OnHover = () =>
+        _tray.OnHover = () => _hover.RequestShow(() =>
         {
-            if (_hover.Shown) return;
-            if (!_tray.TryGetAnchor(out int hx, out int hy))
-            {
-                if (!GetCursorPos(out var c)) return;
-                hx = c.X; hy = c.Y;
-            }
+            if (_menu.AppWindow.IsVisible || AppWindow.IsVisible) return;
+            if (!_tray.TryGetAnchor(out int hx, out int hy)) return;
             _hover.Update(_hTitle, _hCount, _hUnit, _hSub);
             _hover.ShowAt(hx, hy, _s.Theme);
-        };
+        });
 
         _timer = DispatcherQueue.CreateTimer();
         _timer.Interval = TimeSpan.FromSeconds(1);
@@ -175,7 +171,7 @@ public sealed partial class MainWindow : Window
     {
         _hover.Hide();
         bool minimized = (AppWindow.Presenter as OverlappedPresenter)?.State == OverlappedPresenterState.Minimized;
-        if (AppWindow.IsVisible && !minimized) AppWindow.Hide();
+        if (AppWindow.IsVisible && !minimized) NativeMotion.Window(_hwnd, false);
         else ShowFlyout(true);
     }
 
@@ -183,8 +179,8 @@ public sealed partial class MainWindow : Window
     {
         if (AppWindow.Presenter is OverlappedPresenter p && p.State == OverlappedPresenterState.Minimized) p.Restore();
         Place(nearCursor);
-        AppWindow.Show();
         WindowChrome.Apply(_hwnd);
+        if (!AppWindow.IsVisible) NativeMotion.Window(_hwnd, true);
         Activate();
         SetForegroundWindow(_hwnd);
     }
