@@ -148,6 +148,10 @@ jobs:
           NOTES
           sed -i 's/^          //' notes.md
           if gh release view "v$VER" >/dev/null 2>&1; then
-            echo "Release already exists; refusing to replace it." >&2; exit 1
+            DRAFT=$(gh release view "v$VER" --json isDraft --jq .isDraft)
+            if [ "$DRAFT" != "true" ]; then echo "Published release exists; refusing replacement" >&2; exit 1; fi
+            gh release upload "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" --clobber
+            gh release edit "v$VER" --target "$(git rev-parse HEAD)" --notes-file notes.md
+            exit 0
           fi
           gh release create "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" --target "$(git rev-parse HEAD)" --title "v$VER" --notes-file notes.md --draft
