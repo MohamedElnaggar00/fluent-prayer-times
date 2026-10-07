@@ -39,6 +39,3 @@ https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screensh
 
 ويدجت سطح المكتب: اسم الصلاة القادمة وموعدها والعدّاد التنازلي.
 https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/7-desktop-widget.jpg
-
-ويدجت سطح المكتب في لقطة أخرى: عرض العدّاد مع زري التثبيت والإغلاق.
-https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/8-desktop-widget-detail.jpg
