@@ -96,9 +96,3 @@ dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --
 
 ## 📄 الترخيص
 مشروع شخصي. جميع الحقوق محفوظة © محمد النجار - brought to you by app.instinct AI
-
-## v1.1.1
-- مهلة ظهور البطاقة من إعداد tooltip الأصلي في Windows، مع إلغاء الانتظار عند مغادرة الأيقونة.
-- حركة Win32 للبطاقة والنافذة تراعي إعداد تعطيل الحركة. لا تُضمن مطابقة حركة Explorer الخاصة بصريًا.
-- أبعاد الويدجت 180 × 96 بدل 150 × 80، مع تكبير الخطوط والأزرار بنسبة 20%.
-- portable ZIP وinstaller EXE: المثبّت ذاتي التشغيل ولا يحتاج .NET لتشغيله. يثبت في Program Files ويفحص .NET 8 وVisual C++ x64 وWindows App Runtime 1.6، ثم ينزّل المتطلبات الناقصة من Microsoft ويتحقق من توقيعها.
