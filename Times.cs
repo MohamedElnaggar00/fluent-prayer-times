@@ -99,6 +99,13 @@ public static class Times {
         if (tomorrow != null) return (0, At(now, tomorrow["Fajr"], 1), true);
         return null;
     }
+    public static (string num, string unit) FmtDyn(TimeSpan s)
+    {
+        if (s < TimeSpan.Zero) s = TimeSpan.Zero;
+        if (s.TotalHours >= 1) return ($"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}", "ساعة");
+        if (s.TotalMinutes >= 1) return ($"{s.Minutes:00}:{s.Seconds:00}", "دقيقة");
+        return ($"{s.Seconds:00}", "ثانية");
+    }
     public static string Fmt(TimeSpan s) { if (s < TimeSpan.Zero) s = TimeSpan.Zero; return $"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}"; }
 
     // ---- location services ----

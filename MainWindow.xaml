@@ -11,7 +11,7 @@
 
         <Grid x:Name="TitleBarArea" Grid.Row="0">
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center">
-                <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <Image x:Name="ImgTitle" Width="16" Height="16" VerticalAlignment="Center" />
                 <TextBlock Text="Fluent Prayer Times" FontSize="12" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
@@ -36,8 +36,8 @@
 
             <Grid>
                 <!-- ===== Times page ===== -->
-                <ScrollViewer x:Name="PageTimes" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="10" Padding="20,8,20,14" FlowDirection="RightToLeft">
+                <ScrollViewer x:Name="PageTimes" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
+                    <StackPanel x:Name="PanelTimes" Spacing="10" Padding="0,8,0,14" HorizontalAlignment="Center" FlowDirection="RightToLeft">
                         <StackPanel Spacing="2">
                             <TextBlock Text="مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" />
                             <TextBlock x:Name="TxtCity" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -54,9 +54,13 @@
                                     <TextBlock x:Name="TxtNextTime" Text="" FontSize="16" VerticalAlignment="Bottom" Margin="0,0,0,4"
                                                FlowDirection="LeftToRight" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
-                                <TextBlock x:Name="TxtCountdown" Text="--:--:--" FontSize="40" FontWeight="SemiBold"
-                                           FlowDirection="LeftToRight" HorizontalAlignment="Right"
-                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" FlowDirection="LeftToRight" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                    <TextBlock x:Name="TxtUnit" Text="" FontSize="18" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="TxtCountdown" Text="--:--:--" FontSize="40" FontWeight="SemiBold"
+                                               FlowDirection="LeftToRight" VerticalAlignment="Center"
+                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                </StackPanel>
                                 <TextBlock x:Name="TxtStatus" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                         </Border>
@@ -73,8 +77,8 @@
                 </ScrollViewer>
 
                 <!-- ===== Settings page ===== -->
-                <ScrollViewer x:Name="PageSettings" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                    <StackPanel Spacing="10" Padding="20,8,20,20" FlowDirection="RightToLeft">
+                <ScrollViewer x:Name="PageSettings" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
+                    <StackPanel x:Name="PanelSettings" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft">
                         <TextBlock Text="الإعدادات" FontSize="24" FontWeight="SemiBold" />
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -105,21 +109,25 @@
                             <StackPanel Spacing="10">
                                 <TextBlock Text="الموقع" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="المدينة" FontWeight="SemiBold" />
-                                <ComboBox x:Name="CmbCity" MinWidth="280" SelectionChanged="City_Changed" />
+                                <ComboBox x:Name="CmbCity" HorizontalAlignment="Stretch" SelectionChanged="City_Changed" />
                                 <TextBlock Text="بحث عن مكان في مصر" FontWeight="SemiBold" Margin="0,6,0,0" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox x:Name="TxtSearch" MinWidth="280" PlaceholderText="اسم المنطقة أو المدينة" KeyDown="Search_KeyDown" />
-                                    <Button Content="بحث" Click="Search_Click" />
-                                </StackPanel>
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtSearch" PlaceholderText="اسم المنطقة أو المدينة" KeyDown="Search_KeyDown" />
+                                    <Button Grid.Column="1" Content="بحث" Click="Search_Click" />
+                                </Grid>
                                 <ListView x:Name="LstPlaces" MaxHeight="200" Visibility="Collapsed" SelectionChanged="Place_Selected" />
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                                <StackPanel Orientation="Vertical" Spacing="6" Margin="0,6,0,0">
                                     <Button Content="تحديد موقعي تلقائيًا" Click="Detect_Click" />
                                     <TextBlock x:Name="TxtDetect" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
                                 <TextBlock Text="إحداثيات يدوية" FontWeight="SemiBold" Margin="0,6,0,0" />
-                                <StackPanel Orientation="Horizontal" Spacing="8" FlowDirection="LeftToRight" HorizontalAlignment="Right">
-                                    <TextBox x:Name="TxtLat" Width="130" PlaceholderText="Latitude" />
-                                    <TextBox x:Name="TxtLon" Width="130" PlaceholderText="Longitude" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" FlowDirection="LeftToRight" HorizontalAlignment="Center">
+                                    <TextBox x:Name="TxtLat" Width="110" PlaceholderText="Latitude" />
+                                    <TextBox x:Name="TxtLon" Width="110" PlaceholderText="Longitude" />
                                     <Button Content="تطبيق" Click="Coords_Click" />
                                 </StackPanel>
                             </StackPanel>
@@ -161,8 +169,8 @@
                 </ScrollViewer>
 
                 <!-- ===== About page ===== -->
-                <ScrollViewer x:Name="PageAbout" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                    <StackPanel Spacing="10" Padding="20,8,20,20" FlowDirection="RightToLeft">
+                <ScrollViewer x:Name="PageAbout" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
+                    <StackPanel x:Name="PanelAbout" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft">
                         <TextBlock Text="عن البرنامج" FontSize="24" FontWeight="SemiBold" />
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"

@@ -24,6 +24,28 @@ sealed class TrayIcon : IDisposable
         public uint dwInfoFlags; public Guid guidItem; public IntPtr hBalloonIcon;
     }
     [StructLayout(LayoutKind.Sequential)] struct POINT { public int x, y; }
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
+    [StructLayout(LayoutKind.Sequential)] struct NOTIFYICONIDENTIFIER { public uint cbSize; public IntPtr hWnd; public uint uID; public Guid guidItem; }
+    [DllImport("shell32.dll")] static extern int Shell_NotifyIconGetRect(ref NOTIFYICONIDENTIFIER id, out RECT r);
+
+    int _lastX = int.MinValue, _lastY = int.MinValue;
+
+    /// <summary>Center of the tray icon on screen (physical pixels). Falls back to the cursor position at the last tray event.</summary>
+    public bool TryGetAnchor(out int x, out int y)
+    {
+        try
+        {
+            var id = new NOTIFYICONIDENTIFIER { hWnd = _hwnd, uID = 1 };
+            id.cbSize = (uint)Marshal.SizeOf<NOTIFYICONIDENTIFIER>();
+            if (Shell_NotifyIconGetRect(ref id, out var r) == 0 && r.right > r.left && r.bottom > r.top)
+            {
+                x = (r.left + r.right) / 2; y = (r.top + r.bottom) / 2; return true;
+            }
+        }
+        catch { }
+        if (_lastX != int.MinValue) { x = _lastX; y = _lastY; return true; }
+        x = 0; y = 0; return false;
+    }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern bool Shell_NotifyIconW(uint msg, ref NOTIFYICONDATA d);
     [DllImport("comctl32.dll")] static extern bool SetWindowSubclass(IntPtr h, SubclassProc p, UIntPtr id, UIntPtr data);
@@ -88,6 +110,7 @@ sealed class TrayIcon : IDisposable
         if (msg == WM_TRAY)
         {
             uint ev = (uint)((long)l & 0xFFFF);
+            if (GetCursorPos(out var lp)) { _lastX = lp.x; _lastY = lp.y; }
             if (ev == WM_LBUTTONUP) _onClick();
             else if (ev == WM_RBUTTONUP)
             {

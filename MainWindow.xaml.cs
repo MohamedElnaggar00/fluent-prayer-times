@@ -55,11 +55,13 @@ public sealed partial class MainWindow : Window
 
         try
         {
+            ImgTitle.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
             ImgLogo.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
             var v = typeof(App).Assembly.GetName().Version;
             if (v != null) TxtVersion.Text = "الإصدار " + v.Major + "." + v.Minor + "." + v.Build;
         }
         catch { }
+        RootGrid.SizeChanged += (s2, e2) => FitPages();
         BuildRows();
         LoadSettingsUi();
         ApplyAppearance();
@@ -84,7 +86,12 @@ public sealed partial class MainWindow : Window
     // ---------- window / tray ----------
     bool OnContext(int x, int y)
     {
-        try { _menu.ShowAt(x, y, _s.Theme, _s.WidgetVisible); return true; }
+        try
+        {
+            if (_tray.TryGetAnchor(out var ax, out var ay)) { x = ax; y = ay; }
+            _menu.ShowAt(x, y, _s.Theme, _s.WidgetVisible);
+            return true;
+        }
         catch { return false; }
     }
 
@@ -156,9 +163,9 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            int cx = 0, cy = 0;
-            if (nearCursor && GetCursorPos(out var c)) { cx = c.X; cy = c.Y; }
-            var area = nearCursor
+            bool have = _tray.TryGetAnchor(out int cx, out int cy);
+            if (!have && nearCursor && GetCursorPos(out var c)) { cx = c.X; cy = c.Y; have = true; }
+            var area = have
                 ? DisplayArea.GetFromPoint(new PointInt32(cx, cy), DisplayAreaFallback.Nearest)
                 : DisplayArea.Primary;
             var wa = area.WorkArea;
@@ -166,7 +173,7 @@ public sealed partial class MainWindow : Window
             if (h > wa.Height - 16) h = wa.Height - 16;
             if (w > wa.Width - 16) w = wa.Width - 16;
             int x, y;
-            if (nearCursor)
+            if (have)
             {
                 x = Math.Clamp(cx - w / 2, wa.X + 8, wa.X + wa.Width - w - 8);
                 y = cy > wa.Y + wa.Height / 2 ? wa.Y + wa.Height - h - 8 : wa.Y + 8;
@@ -198,12 +205,22 @@ public sealed partial class MainWindow : Window
     }
 
     // ---------- navigation ----------
+    void FitPages()
+    {
+        double avail = RootGrid.ActualWidth - 48;
+        if (avail < 200) avail = 200;
+        double w = Math.Max(200, Math.Min(560, avail - 32));
+        foreach (var sv in new[] { PageTimes, PageSettings, PageAbout }) sv.MaxWidth = avail;
+        PanelTimes.Width = w; PanelSettings.Width = w; PanelAbout.Width = w;
+    }
+
     void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         string tag = (args.SelectedItemContainer?.Tag as string) ?? "times";
         PageTimes.Visibility = tag == "times" ? Visibility.Visible : Visibility.Collapsed;
         PageSettings.Visibility = tag == "settings" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = tag == "about" ? Visibility.Visible : Visibility.Collapsed;
+        FitPages();
     }
 
     // ---------- times ----------
@@ -252,19 +269,20 @@ public sealed partial class MainWindow : Window
 
         if (_res?.Today == null)
         {
-            TxtNextName.Text = "--"; TxtNextTime.Text = ""; TxtCountdown.Text = "--:--:--";
+            TxtNextName.Text = "--"; TxtNextTime.Text = ""; TxtCountdown.Text = "--:--:--"; TxtUnit.Text = "";
             _tray.SetTip("مواقيت الصلاة");
             PushWidget("--", "", "--:--:--");
             return;
         }
         var nx = Times.Next(now, _res.Today.T, _res.Tomorrow?.T);
-        if (nx == null) { TxtNextName.Text = "--"; TxtCountdown.Text = "--:--:--"; _tray.SetTip("مواقيت الصلاة"); return; }
+        if (nx == null) { TxtNextName.Text = "--"; TxtCountdown.Text = "--:--:--"; TxtUnit.Text = ""; _tray.SetTip("مواقيت الصلاة"); return; }
         var (idx, time, tomorrow) = nx.Value;
         var left = time - now;
         TxtNextName.Text = Times.Names[idx] + (tomorrow ? " (غدًا)" : "");
         TxtNextTime.Text = time.ToString("h:mm tt", CultureInfo.InvariantCulture);
-        TxtCountdown.Text = Times.Fmt(left);
-        PushWidget(TxtNextName.Text, TxtNextTime.Text, TxtCountdown.Text);
+        var (cnum, cunit) = Times.FmtDyn(left);
+        TxtCountdown.Text = cnum; TxtUnit.Text = cunit;
+        PushWidget(TxtNextName.Text, TxtNextTime.Text, cnum + " " + cunit);
         _tray.SetTip((idx == 1 ? "باقي على الشروق: " : "باقي على صلاة " + Times.Names[idx] + ": ") + Times.Fmt(left));
 
         int hl = tomorrow ? -1 : idx;
@@ -420,21 +438,24 @@ public sealed partial class MainWindow : Window
 }
 
 
-/// <summary>Invisible 1px host window that shows a modern Windows 11 MenuFlyout at the tray icon.</summary>
+/// <summary>Borderless Windows 11 style popup menu, placed right above the tray icon.</summary>
 sealed class TrayMenuWindow : Window
 {
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
-    [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
 
-    readonly Grid _root = new();
+    readonly Border _root = new();
+    readonly StackPanel _list = new() { Spacing = 2 };
     readonly IntPtr _hwnd;
     readonly Action<int> _onCmd;
 
     public TrayMenuWindow(Action<int> onCmd)
     {
         _onCmd = onCmd;
+        _root.Padding = new Thickness(4);
+        _root.Child = _list;
         Content = _root;
         Title = "Fluent Prayer Times Menu";
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -444,45 +465,59 @@ sealed class TrayMenuWindow : Window
             p.IsResizable = false; p.IsMaximizable = false; p.IsMinimizable = false; p.IsAlwaysOnTop = true;
         }
         try { AppWindow.IsShownInSwitchers = false; } catch { }
+        try { SystemBackdrop = new DesktopAcrylicBackdrop(); } catch { }
         AppWindow.Closing += (a, e) => { e.Cancel = true; a.Hide(); };
-        // tool window + almost fully transparent so only the flyout is visible
+        Activated += (s, e) => { if (e.WindowActivationState == WindowActivationState.Deactivated) AppWindow.Hide(); };
         long ex = (long)GetWindowLongPtr(_hwnd, -20);
-        SetWindowLongPtr(_hwnd, -20, (IntPtr)(ex | 0x80 | 0x80000));
-        SetLayeredWindowAttributes(_hwnd, 0, 1, 2);
+        SetWindowLongPtr(_hwnd, -20, (IntPtr)(ex | 0x80));
     }
 
-    public void ShowAt(int x, int y, string theme, bool widgetOn)
+    void AddItem(string text, string glyph, int cmd, bool check = false)
     {
-        var wa = DisplayArea.GetFromPoint(new PointInt32(x, y), DisplayAreaFallback.Nearest).WorkArea;
-        bool lower = y > wa.Y + wa.Height / 2;
-        AppWindow.MoveAndResize(new RectInt32(x, y, 1, 1));
+        var g = new Grid { ColumnSpacing = 12 };
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var ic = new FontIcon { Glyph = glyph, FontSize = 16 };
+        var tb = new TextBlock { Text = text, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(tb, 1);
+        g.Children.Add(ic); g.Children.Add(tb);
+        if (check)
+        {
+            var ck = new FontIcon { Glyph = "\uE73E", FontSize = 14 };
+            Grid.SetColumn(ck, 2);
+            g.Children.Add(ck);
+        }
+        var b = new Button
+        {
+            Content = g, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0),
+            Padding = new Thickness(12, 0, 12, 0), Height = 36, CornerRadius = new CornerRadius(4),
+        };
+        b.Click += (s, e) => { AppWindow.Hide(); _onCmd(cmd); };
+        _list.Children.Add(b);
+    }
+
+    public void ShowAt(int ax, int ay, string theme, bool widgetOn)
+    {
+        var wa = DisplayArea.GetFromPoint(new PointInt32(ax, ay), DisplayAreaFallback.Nearest).WorkArea;
         _root.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         _root.FlowDirection = FlowDirection.RightToLeft;
+        _list.Children.Clear();
+        AddItem("فتح", "\uE8A7", 1);
+        AddItem("ويدجت سطح المكتب", "\uE8A1", 4, widgetOn);
+        AddItem("الإعدادات", "\uE713", 2);
+        _list.Children.Add(new Border { Height = 1, Margin = new Thickness(4, 3, 4, 3), Background = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+        AddItem("خروج", "\uE7E8", 3);
 
-        var f = new MenuFlyout { ShouldConstrainToRootBounds = false };
-        void Add(string text, string glyph, int cmd)
-        {
-            var it = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } };
-            it.Click += (s, e) => _onCmd(cmd);
-            f.Items.Add(it);
-        }
-        Add("فتح", "\uE8A7", 1);
-        var w = new ToggleMenuFlyoutItem { Text = "ويدجت سطح المكتب", IsChecked = widgetOn };
-        w.Click += (s, e) => _onCmd(4);
-        f.Items.Add(w);
-        Add("الإعدادات", "\uE713", 2);
-        f.Items.Add(new MenuFlyoutSeparator());
-        Add("خروج", "\uE7E8", 3);
-        f.Closed += (s, e) => AppWindow.Hide();
-
+        double dpi = GetDpiForWindow(_hwnd) / 96.0;
+        if (dpi < 1) dpi = 1;
+        int w = (int)(230 * dpi), h = (int)((4 * 36 + 3 * 2 + 7 + 8) * dpi);
+        int x = Math.Clamp(ax - w / 2, wa.X + 8, wa.X + wa.Width - w - 8);
+        int y = ay > wa.Y + wa.Height / 2 ? wa.Y + wa.Height - h - 8 : wa.Y + 8;
+        AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
         AppWindow.Show();
         Activate();
         SetForegroundWindow(_hwnd);
-        f.ShowAt(_root, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
-        {
-            Position = new Windows.Foundation.Point(0, 0),
-            Placement = lower ? Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedRight
-                              : Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
-        });
     }
 }
