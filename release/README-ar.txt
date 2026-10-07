@@ -15,3 +15,30 @@ https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
 
 نسخة installer: شغّل المثبّت ثم اضغط install now. يُثبَّت البرنامج في Program Files وتُضاف أيقونة إلى قائمة ابدأ. تُفحَص .NET 8 وVisual C++ x64 وWindows App Runtime 1.6، وتُنزَّل المتطلبات الناقصة من Microsoft مع التحقق من التوقيع. يلزم الإنترنت وصلاحيات المسؤول عند التثبيت.
 نسخة portable لا تثبت المتطلبات تلقائيًا.
+
+لقطات الشاشة / Screenshots
+========================
+
+النافذة الرئيسية مع ويدجت سطح المكتب: عرض المواقيت مع إبقاء عدّاد الصلاة القادمة ظاهرًا على سطح المكتب.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/1-desktop-overview.jpg
+
+النافذة الرئيسية: مواقيت الصلاة اليومية والعدّاد التنازلي للصلاة القادمة.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/2-prayer-times.jpg
+
+منبه الأذكار: عرض الذكر وإعداد فترة التذكير.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/3-azkar-reminder.jpg
+
+محول التاريخ: تحويل التاريخ الهجري إلى التاريخ الميلادي.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/4-date-converter.jpg
+
+التقويم الهجري: عرض أيام الشهر والمناسبات مع تمييز اليوم المحدد.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/5-hijri-calendar.jpg
+
+بطاقة التمرير فوق الأيقونة: الوقت المتبقي للصلاة القادمة مع المدينة وموعد الصلاة.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/6-tray-hover.jpg
+
+ويدجت سطح المكتب: اسم الصلاة القادمة وموعدها والعدّاد التنازلي.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/7-desktop-widget.jpg
+
+ويدجت سطح المكتب في لقطة أخرى: عرض العدّاد مع زري التثبيت والإغلاق.
+https://github.com/MohamedElnaggar00/fluent-prayer-times/blob/main/docs/screenshots/8-desktop-widget-detail.jpg
