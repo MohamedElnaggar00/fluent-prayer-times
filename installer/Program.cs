@@ -82,10 +82,11 @@ static class Program
         window.Content = panel;
         if (args.Length == 2 && args[0] == "--preview")
         {
-            panel.Width = 434; panel.Height = 555;
-            panel.Measure(new Size(434,555)); panel.Arrange(new Rect(0,0,434,555)); panel.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(434,555,96,96,PixelFormats.Pbgra32);
-            bitmap.Render(panel);
+            window.Content = null;
+            var preview = new Border { Width = 490, Height = 580, Background = window.Background, Child = panel, FlowDirection = FlowDirection.RightToLeft };
+            preview.Measure(new Size(490,580)); preview.Arrange(new Rect(0,0,490,580)); preview.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(490,580,96,96,PixelFormats.Pbgra32);
+            bitmap.Render(preview);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var file = File.Create(args[1]); encoder.Save(file); return;
         }
