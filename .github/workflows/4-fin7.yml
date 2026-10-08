@@ -1,0 +1,95 @@
+name: Final v1.2.6 swap (fixes batch)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/*fin7.yml']
+permissions:
+  contents: write
+jobs:
+  fin:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/ui-batch12
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Merge main into the branch
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git fetch origin main
+          git merge origin/main --no-edit
+          git log --oneline -4
+      - name: Publish v1.2.6 build
+        shell: bash
+        run: |
+          dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false \
+            -p:DebugType=none -p:Version=1.2.6 -p:AssemblyVersion=1.2.6.0 -p:FileVersion=1.2.6.0 -o publish
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process .\wari.exe -ArgumentList '--quiet' -Wait
+          foreach ($f in 'adhan-short.m4a','iqama-short.m4a','iqama-full.m4a','adhan-full.m4a') { if (-not (Test-Path "publish\Audio\$f")) { throw "missing $f" } }
+          $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList '--tray' -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) { throw 'app exited early' }
+          Stop-Process -Id $p.Id -Force
+      - name: Package and build installers
+        shell: pwsh
+        run: |
+          $ver = '1.2.6'
+          $dir = "FluentPrayerTimes-v$ver"
+          New-Item -ItemType Directory -Path $dir | Out-Null
+          Copy-Item publish\* $dir -Recurse
+          Copy-Item release/README-ar.txt "$dir/اقرأني.txt"
+          New-Item -ItemType Directory -Path out | Out-Null
+          Compress-Archive -Path $dir -DestinationPath "out/FluentPrayerTimes-v$ver-portable-win-x64.zip"
+          Compress-Archive -Path publish\* -DestinationPath installer/payload.zip
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o setup-sc
+          if ($LASTEXITCODE -ne 0) { throw 'sc publish failed' }
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o setup-rd
+          if ($LASTEXITCODE -ne 0) { throw 'rd publish failed' }
+          Copy-Item setup-sc/FluentPrayerTimes-Setup.exe "out/FluentPrayerTimes-v$ver-installer-win-x64.exe"
+          Copy-Item setup-rd/FluentPrayerTimes-Setup.exe "out/FluentPrayerTimes-v$ver-installer-.NET-runtime-dependent-win-x64.exe"
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $p = Start-Process setup-sc/FluentPrayerTimes-Setup.exe -ArgumentList '--verify-install' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "install failed $($p.ExitCode)" }
+          $exe = Join-Path $env:ProgramFiles 'FluentPrayerTimes/FluentPrayerTimes.exe'
+          $pp = Start-Process $exe -ArgumentList '--tray' -PassThru
+          Start-Sleep -Seconds 8
+          if ($pp.HasExited) { throw 'installed app exited' }
+          Stop-Process -Id $pp.Id -Force
+          (Get-Item $exe).VersionInfo.FileVersion
+          Get-ChildItem out | Select Name,Length | Format-Table -AutoSize | Out-String -Width 200
+      - name: Merge to main
+        shell: bash
+        run: |
+          git push origin HEAD:main
+          git log --oneline -2
+      - name: Swap assets on v1.2.6 and update notes
+        shell: bash
+        run: |
+          set -e
+          gh release view v1.2.6 --json body --jq .body > old.md
+          last=$(grep -n '^- ' old.md | tail -1 | cut -d: -f1)
+          {
+            echo '- صفحة "عن البرنامج" تعرض أيقونة التطبيق الزرقاء نفسها التي على سطح المكتب.'
+            echo '- إصلاح رقم الإصدار في صفحة "عن البرنامج"، فكان يظهر 1.0 دائما.'
+            echo '- أسهم التنقل بين الأشهر في التقويم الهجري تنعكس في الواجهات من اليمين إلى اليسار.'
+            echo '- الضغط على أيقونة البرنامج في منطقة الإشعارات يفتح الصفحة الرئيسية دائما.'
+          } > add.md
+          { head -n "$last" old.md; cat add.md; tail -n +"$((last+1))" old.md; } > notes.md
+          cat notes.md
+          gh release upload v1.2.6 out/*.zip out/*.exe --clobber
+          gh release edit v1.2.6 --notes-file notes.md
+          gh release view v1.2.6 --json assets,isDraft,url --jq '{draft:.isDraft,url:.url,assets:[.assets[]|[.name,.size]]}'
