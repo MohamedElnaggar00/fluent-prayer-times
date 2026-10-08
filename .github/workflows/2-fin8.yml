@@ -1,0 +1,38 @@
+name: Add English to v1.2.6 notes
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/*fin8.yml']
+permissions:
+  contents: write
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Add English translation
+        run: |
+          set -e
+          gh release view v1.2.6 --repo "$GITHUB_REPOSITORY" --json body --jq .body > old.md
+          if grep -q "What's new in 1.2.6" old.md; then echo "already has English"; exit 0; fi
+          {
+            cat old.md
+            echo
+            echo '---'
+            echo
+            echo "## What's new in 1.2.6"
+            echo
+            echo '- The main window is a bit taller.'
+            echo '- In right-to-left languages (Arabic, Urdu, Persian) the title bar mirrors: the title on the right and the close button on the left, like the sidebar.'
+            echo '- An "Apply changes" button at the top of Settings restarts the app to apply a new language or accent color.'
+            echo '- The About page has a link to the project repository on GitHub.'
+            echo '- The About page shows the same blue app icon as the desktop.'
+            echo '- Fixed the version number on the About page, which always showed 1.0.'
+            echo '- The month arrows in the Hijri calendar flip direction in right-to-left languages.'
+            echo '- Clicking the tray icon always opens the main page.'
+            echo
+            echo 'The full installer needs no extra components. The small installer needs the .NET 8 Desktop Runtime. The portable build is a zip file.'
+          } > new.md
+          gh release edit v1.2.6 --repo "$GITHUB_REPOSITORY" --notes-file new.md
+          gh release view v1.2.6 --repo "$GITHUB_REPOSITORY" --json body --jq .body | tail -15
