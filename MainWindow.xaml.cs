@@ -654,6 +654,11 @@ public sealed partial class MainWindow : Window
                 ExpAccent.IsExpanded = true;
                 ShowFlyout(false);
             }
+            if (part == "about")
+            {
+                Nav.SelectedItem = Nav.FooterMenuItems[1];
+                ShowFlyout(false);
+            }
             if (part == "picker")
             {
                 SetAccent(ParseHex("#C239B3"), false);

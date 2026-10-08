@@ -257,6 +257,7 @@
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="brought to you by app.instinct AI" FontSize="14" FlowDirection="LeftToRight" HorizontalAlignment="Center" TextAlignment="Center"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" />
+                                <HyperlinkButton Content="GitHub Repo Link" NavigateUri="https://github.com/MohamedElnaggar00/fluent-prayer-times" FlowDirection="LeftToRight" HorizontalAlignment="Center" />
                             </StackPanel>
                         </Border>
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
