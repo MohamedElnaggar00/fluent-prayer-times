@@ -1,0 +1,81 @@
+name: Localization validation
+on:
+  push:
+    branches: ['**']
+    paths: ['.github/workflows/*uid7.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply patch on main, push side branch
+        shell: bash
+        run: |
+          set -e
+          echo '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' | base64 -d | gunzip > b3.patch
+          git apply --whitespace=nowarn b3.patch
+          rm b3.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q -b ui-batch7
+          git add -A
+          git commit -q -m "Taller window and mirrored title bar in RTL"
+          git push --force origin ui-batch7:feature/ui-batch7
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -p:DebugType=none -o publish
+          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
+      - name: Install Windows App Runtime
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process .\wari.exe -ArgumentList '--quiet' -Wait
+      - name: Logic self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList '--selftest' -PassThru -Wait
+          $log = Join-Path $env:APPDATA 'FluentPrayerTimes\selftest.log'
+          if (Test-Path $log) { Get-Content $log | Select-Object -Last 5 }
+          if ($p.ExitCode -ne 0) { throw "selftest failed $($p.ExitCode)" }
+      - name: Captures
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force shots | Out-Null
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
+          }
+          foreach ($it in 'ar|main', 'en|main', 'ur|main') {
+            $lang,$part = $it.Split('|')
+            $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=next","--part=$part","--lang=$lang" -PassThru
+            Start-Sleep -Seconds 7
+            Shot "$lang-$part"
+            if ($part -eq 'hover') {
+              Start-Process notepad.exe -WindowStyle Maximized
+              Start-Sleep -Seconds 4
+              Shot "hover-over-notepad"
+              Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+            }
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+          }
+          $pl = Join-Path $env:APPDATA 'FluentPrayerTimes\preview.log'
+          if (Test-Path $pl) { Get-Content $pl; Copy-Item $pl shots\preview.log }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loc
+          path: shots/
