@@ -38,6 +38,9 @@ sealed class HoverWindow : Window
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    /// <summary>Keeps the card above every other window without taking focus (HWND_TOPMOST, NOMOVE | NOSIZE | NOACTIVATE).</summary>
+    void Raise() { try { SetWindowPos(_hwnd, new IntPtr(-1), 0, 0, 0, 0, 0x2 | 0x1 | 0x10); } catch { } }
     [StructLayout(LayoutKind.Sequential)] struct CurPt { public int X, Y; }
 
     readonly IntPtr _hwnd;
@@ -132,6 +135,7 @@ sealed class HoverWindow : Window
     void Heal()
     {
         if (!Shown) { _heal.Stop(); return; }
+        Raise();
         try
         {
             var sz = AppWindow.Size;
@@ -182,6 +186,7 @@ sealed class HoverWindow : Window
         ShowWindow(_hwnd, 4);                 // SW_SHOWNOACTIVATE: plain show, no AnimateWindow capture of a possibly unpainted window
         AppWindow.MoveAndResize(_rect);       // size again once the window is really visible
         WindowChrome.Apply(_hwnd);
+        Raise();
         _root.InvalidateMeasure(); _root.UpdateLayout();
         Shown = true;
         _timer.Start();

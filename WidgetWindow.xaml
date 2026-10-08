@@ -32,8 +32,12 @@
                 <TextBlock x:Name="TxtTime" Text="" FontSize="9.6" VerticalAlignment="Bottom" Margin="0,0,0,2" FlowDirection="LeftToRight"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
-            <TextBlock x:Name="TxtCount" Text="--:--" FontSize="22.8" FontWeight="SemiBold" FlowDirection="LeftToRight"
-                       HorizontalAlignment="Center" TextAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" FlowDirection="LeftToRight">
+                <TextBlock x:Name="TxtUnit" Text="" FontSize="12" VerticalAlignment="Bottom" Margin="0,0,0,6" Visibility="Collapsed"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="TxtCount" Text="--:--" FontSize="32" FontWeight="SemiBold" FlowDirection="LeftToRight"
+                           TextAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </Window>

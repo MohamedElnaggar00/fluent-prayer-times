@@ -46,7 +46,7 @@ public sealed partial class WidgetWindow : Window
         _hwnd = hwnd;
         double dpi = GetDpiForWindow(hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        int w = (int)(180 * dpi), h = (int)(96 * dpi);
+        int w = (int)(180 * dpi), h = (int)(110 * dpi);
 
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
@@ -122,12 +122,13 @@ public sealed partial class WidgetWindow : Window
     }
 
     Brush? _countBrush;
-    public void SetInfo(string name, string time, string count, string header, Windows.UI.Color? color, bool message)
+    public void SetInfo(string name, string time, string count, string header, Windows.UI.Color? color, bool message, string unit = "")
     {
         _countBrush ??= TxtCount.Foreground;
         TxtName.Text = name; TxtTime.Text = time; TxtCount.Text = count; TxtHeader.Text = header;
         TxtCount.Foreground = color.HasValue ? new SolidColorBrush(color.Value) : _countBrush;
-        TxtCount.FontSize = message ? 15 : 22.8;
+        TxtCount.FontSize = message ? 15 : 32;
+        TxtUnit.Text = unit; TxtUnit.Visibility = string.IsNullOrEmpty(unit) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public void ShowWidget() { _wantVisible = true; ApplySnap(Math.Clamp(_s.WidgetSnap, 0, 7)); AppWindow.Show(); WindowChrome.Apply(_hwnd); }

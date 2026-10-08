@@ -24,7 +24,7 @@ public sealed partial class MainWindow : Window
 
     const int CmdOpen = 1, CmdSettings = 2, CmdExit = 3, CmdWidget = 4, CmdUpdate = 5;
     WidgetWindow? _widget;
-    string _wName = "--", _wTime = "", _wCount = "--:--", _wHeader = "الصلاة القادمة";
+    string _wName = "--", _wTime = "", _wCount = "--:--", _wHeader = "الصلاة القادمة", _wUnit = "";
     Windows.UI.Color? _wColor; bool _wMsg;
 
     readonly Settings _s = Settings.Load();
@@ -63,6 +63,7 @@ public sealed partial class MainWindow : Window
         Title = "مواقيت الصلاة - Fluent Prayer Times";
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarArea);
+        if (AppWindow.Presenter is OverlappedPresenter mainPresenter) { mainPresenter.IsMaximizable = false; mainPresenter.IsMinimizable = false; }   // only close remains
 
         double dpi = GetDpiForWindow(_hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
@@ -93,7 +94,7 @@ public sealed partial class MainWindow : Window
         _loading = false;
 
         _menu = new TrayMenuWindow(OnMenu);
-        _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, "app.ico"),
+        _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, TaskbarIsLight() ? "tray-dark.ico" : "tray-white.ico"),
             new[] { (CmdOpen, "فتح"), (CmdWidget, "ويدجت سطح المكتب"), (CmdSettings, "الإعدادات"), (CmdUpdate, "التحقق من التحديثات"), (CmdExit, "خروج") },
             ToggleFlyout, OnMenu, OnContext);
 
@@ -154,7 +155,7 @@ public sealed partial class MainWindow : Window
                 _widget = new WidgetWindow(_s);
                 _widget.HiddenByUser = () => { _s.WidgetVisible = false; _s.Save(); SyncWidgetToggle(); };
             }
-            _widget.SetInfo(_wName, _wTime, _wCount, _wHeader, _wColor, _wMsg);
+            _widget.SetInfo(_wName, _wTime, _wCount, _wHeader, _wColor, _wMsg, _wUnit);
             _widget.ShowWidget();
         }
         else _widget?.HideWidget();
@@ -310,6 +311,34 @@ public sealed partial class MainWindow : Window
         PageConvert.Visibility = tag == "convert" ? Visibility.Visible : Visibility.Collapsed;
         PageAzkar.Visibility = tag == "azkar" ? Visibility.Visible : Visibility.Collapsed;
         FitPages();
+        ScrollViewer? shown = tag switch { "settings" => PageSettings, "about" => PageAbout, "calendar" => PageCalendar, "convert" => PageConvert, "azkar" => PageAzkar, _ => PageTimes };
+        if (_navReady) SlideIn(shown);
+        _navReady = true;
+    }
+
+    bool _navReady;
+    Microsoft.UI.Xaml.Media.Animation.Storyboard? _navMotion;
+
+    /// <summary>Page switch motion: the old page disappears at once and the new one rises from below with a fade, decelerating (about 300 ms), like WinUI's entrance navigation transition.</summary>
+    void SlideIn(FrameworkElement page)
+    {
+        _navMotion?.Stop();
+        if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled) { page.Opacity = 1; page.RenderTransform = new TranslateTransform(); return; }
+        var tr = new TranslateTransform(); page.RenderTransform = tr;
+        var ease = new Microsoft.UI.Xaml.Media.Animation.CubicEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut };
+        var slide = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { From = 96, To = 0, Duration = new Duration(TimeSpan.FromMilliseconds(320)), EasingFunction = ease, EnableDependentAnimation = true };
+        var fade = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { From = 0, To = 1, Duration = new Duration(TimeSpan.FromMilliseconds(220)), EasingFunction = ease };
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(slide, tr); Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(slide, "Y");
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(fade, page); Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(fade, "Opacity");
+        var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard(); _navMotion = sb;
+        page.Opacity = 0;
+        sb.Children.Add(slide); sb.Children.Add(fade); sb.Begin();
+    }
+
+    static bool TaskbarIsLight()
+    {
+        try { return Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) is int v && v == 1; }
+        catch { return false; }
     }
 
     // ---------- times ----------
@@ -427,22 +456,22 @@ public sealed partial class MainWindow : Window
         switch (d.Phase)
         {
             case Times.Phase.Adhan:
-                label = "الصلاة الحالية"; count = "يُرفع الاذان الان"; unit = ""; color = Green; msg = true;
+                label = "الصلاة الحالية"; count = "حان وقت الاذان"; unit = ""; color = Green; msg = true;
                 title = "موعد صلاة " + Times.Names[d.Idx]; tm = adhanTime; break;
             case Times.Phase.Iqama:
                 label = "الإقامة"; count = Times.FmtMS(d.Left); unit = "دقيقة : ثانية"; color = Amber;
                 title = "باقي على إقامة صلاة " + Times.Names[d.Idx]; break;
             case Times.Phase.IqamaNow:
-                label = "الصلاة الحالية"; count = "دخل وقت الصلاة"; unit = ""; color = Green; msg = true;
+                label = "الصلاة الحالية"; count = "حان وقت الاقامة"; unit = ""; color = Green; msg = true;
                 title = "إقامة صلاة " + Times.Names[d.Idx]; break;
             default:
-                count = Times.FmtHM(d.Left); unit = "ساعة : دقيقة";
+                count = Times.FmtHM(d.Left); unit = "ساعة";
                 title = d.Idx == 1 ? "باقي على الشروق" : "باقي على صلاة " + nm; break;
         }
         TxtNextLabel.Text = label;
         TxtNextName.Text = nm; TxtNextTime.Text = tm;
         SetMainCount(count, unit, color, msg);
-        PushWidget(nm, tm, count, label, color, msg);
+        PushWidget(nm, tm, count, label, color, msg, unit);
         SetHover(title, count, unit, nm + " " + tm + "  -  " + _s.Location.Display, color, msg);
 
         int hl = d.Tomorrow ? -1 : d.Idx;
@@ -523,10 +552,10 @@ public sealed partial class MainWindow : Window
         if (_hover.Shown) _hover.Update(title, count, unit, sub, color, msg);
     }
 
-    void PushWidget(string n, string t, string c, string header, Windows.UI.Color? color, bool msg)
+    void PushWidget(string n, string t, string c, string header, Windows.UI.Color? color, bool msg, string unit = "")
     {
-        _wName = n; _wTime = t; _wCount = c; _wHeader = header; _wColor = color; _wMsg = msg;
-        _widget?.SetInfo(n, t, c, header, color, msg);
+        _wName = n; _wTime = t; _wCount = c; _wUnit = unit; _wHeader = header; _wColor = color; _wMsg = msg;
+        _widget?.SetInfo(n, t, c, header, color, msg, unit);
     }
 
     // ---------- settings ----------
