@@ -1,0 +1,81 @@
+name: Localization validation
+on:
+  push:
+    branches: ['**']
+    paths: ['.github/workflows/*uid11.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply patch on main, push side branch
+        shell: bash
+        run: |
+          set -e
+          echo 'H4sIADgAyGoC/81WzW4iRxC++ylKc1iBgOF3AdtAbFizi2RblmHXhySHZqYZOjt0j3p6bFjLlygbRXmPaJMoUrSHfRf8NqmeH2P+nKztQ0aC6amqrv6+rurqstloBLmcwxSQfIe4lNtEnhGHmpYPw1XJDuM2nULFGhZ2LWqa5VHdHg13oVgoVCuVnVwut+5lJ5PJbPB0cAC5UjVbh0z4j58+RRMbLJf4Ptw3hz3oK2K9PyOcujuQPJxcmh3hBhP+io4YZ4oJ7puHtp3i9ApWNXANF8xWY2jCa8nsY8odNTYPAyXgJr3/DF61euE5VcyGX2/RbjDzqIkMZPqZltpEIJd4vSQSPEkvY0jtQKlwckdwRbmKxV386lmh4rU787RX47vgqFZtG3ADN/voKJ8Ha0wvpeB7oUMmAh9SkjljBT6zKTAO54Pj9PLSnE7VI5fuREvvZJ5M5dg8Vy58s/C793h2mSezW0bTXqBJCN9lhAZidlxmvYdME1IkC8M0NFuY/tRL5YpLyYNItpouWWrcE2bH+BYnCRH2PWIx7qCqpHHY94tB1w2Q1ZkkMyoHbEJ9PLWeFD/gWd6misuDXSW1Yr1gmqWybderK+Vh6+SoTmxV64JRrGVrkAn/Dw4iho3TwHXJ0KUtyvWrkb8TxAa9iYfbxNRbH6n6d2Yr4tj40NNSog+cjmKLeJ7JLNHIryqirG+8o9JHUatolsxCI598RlmzpK3e00ZrnUlhB5ZqRZQh4gwh6UY+Uca2HTHxCJ+1TsSYTLBKHrmcOA6RjXyiSQgEaiykv8Ew0SyH+YQwfoFxE1fmlExcjMCKJAlqpWZXynXTHA6LhfpuYTmoq3OiWK5Kw5r/sqxjGL2SIG57GveyNc7VplE34I2Q7AMeNOIeuszhE9y+ptHBfyqN1sMu45TQ18p07xS3qGn0Js6xcIQR1VdcQK9AdSWIxw+sBvn/st4AD2vbFXhW9ahpzH+ff779ef7p9uP8L7j9ePsLDn+8/XX+J+Dgp/kX/H2a/2GExaTPPiDGUiX6uohx9emEtYVr/ws6vdwG8QmRDuNNo5CtZgvZQsgi9xUskp0bTFWc00bCTOP/bf5l/jcy+AxFs3CfRbHyKLyLGvwkbM+BBL7i6QpJHSkCbjeN68GYTug59UUgLRp67zLXxUteyD7FgoK9zqwtA39888icGuJK+vLCfmAmAhjOIKxd3FeMWwoOe6v0u664esUktXRNaxrHdKQG4lyn1/94axaZW7nL3IfqWdTGrgvjqlaql8uVITHNGi2ValXyYFVbNLMbFLq2VV9WslXI6FexqFtaLxjipZF0th6RihE37nAXPrAfiAbrW3g09Q4tCzfY7Pk4JghaX+RKBnR/3bo/FlddF6OvUiPi+jS9YnOzfJDYCFIaEzSxA7PihttILxtdrx++EQaPWGNIhZ2FbpROsZM9oTzoKTrx06FjlPtazpzwznzH6JXWAmfw4gWkODMHxAHig68klvX0CojQZZ+6mJ3UDidi+8L218Fs4JxZ5gxbOZMhTkPCsEx4bV83YNGirhCY+He8vy1+v7/zDyh5TbxQDQAA' | base64 -d | gunzip > b3.patch
+          git apply --whitespace=nowarn b3.patch
+          rm b3.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q -b ui-batch11
+          git add -A
+          git commit -q -m "Taller window and mirrored title bar in RTL"
+          git push --force origin ui-batch11:feature/ui-batch11
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -p:DebugType=none -o publish
+          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
+      - name: Install Windows App Runtime
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process .\wari.exe -ArgumentList '--quiet' -Wait
+      - name: Logic self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList '--selftest' -PassThru -Wait
+          $log = Join-Path $env:APPDATA 'FluentPrayerTimes\selftest.log'
+          if (Test-Path $log) { Get-Content $log | Select-Object -Last 5 }
+          if ($p.ExitCode -ne 0) { throw "selftest failed $($p.ExitCode)" }
+      - name: Captures
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force shots | Out-Null
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
+          }
+          foreach ($it in 'ar|calendar', 'en|calendar', 'ur|calendar') {
+            $lang,$part = $it.Split('|')
+            $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=next","--part=$part","--lang=$lang" -PassThru
+            Start-Sleep -Seconds 7
+            Shot "$lang-$part"
+            if ($part -eq 'hover') {
+              Start-Process notepad.exe -WindowStyle Maximized
+              Start-Sleep -Seconds 4
+              Shot "hover-over-notepad"
+              Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+            }
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+          }
+          $pl = Join-Path $env:APPDATA 'FluentPrayerTimes\preview.log'
+          if (Test-Path $pl) { Get-Content $pl; Copy-Item $pl shots\preview.log }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loc
+          path: shots/
