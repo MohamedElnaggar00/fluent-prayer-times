@@ -1,0 +1,40 @@
+name: Add runtime-dependent installer to release
+# Runs when a release is published and adds the small .NET-runtime-dependent installer
+# next to the self-contained installer and the portable zip. Existing assets are never replaced.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v1.2.0'
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build from the released payload
+        shell: pwsh
+        run: |
+          $ver = $env:TAG.TrimStart('v')
+          $name = "FluentPrayerTimes-v$ver-installer-.NET-runtime-dependent-win-x64.exe"
+          $existing = gh release view $env:TAG --json assets --jq '.assets[].name'
+          if ($existing -contains $name) { Write-Host "already present: $name"; exit 0 }
+          gh release download $env:TAG -p '*portable*' -O portable.zip
+          Expand-Archive portable.zip payload
+          Compress-Archive -Path "payload/FluentPrayerTimes-v$ver/*" -DestinationPath installer/payload.zip
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o setup
+          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
+          Copy-Item setup/FluentPrayerTimes-Setup.exe $name
+          gh release upload $env:TAG $name
