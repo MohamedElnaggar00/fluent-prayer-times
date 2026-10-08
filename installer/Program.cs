@@ -38,6 +38,8 @@ static class Program
                 Directory.Delete(Target, true);
                 string shortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Product + ".lnk");
                 if (File.Exists(shortcut)) File.Delete(shortcut);
+                string desk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Product + ".lnk");
+                if (File.Exists(desk)) File.Delete(desk);
                 Registry.LocalMachine.DeleteSubKeyTree(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes", false);
                 MessageBox.Show("تمت إزالة البرنامج. لم تُحذف إعداداتك الشخصية.", Product);
             }
@@ -53,17 +55,22 @@ static class Program
         var about = new StackPanel { Margin = new Thickness(20), HorizontalAlignment = HorizontalAlignment.Center };
         about.Children.Add(new Border { Width = 104, Height = 104, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(0,103,192)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,14), Child = new Image { Width = 72, Height = 72, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")) } });
         about.Children.Add(Text("برنامج مواقيت الصلاة", 24));
-        about.Children.Add(Text("الإصدار 1.1.2", 14));
+        about.Children.Add(Text("الإصدار 1.2.0", 14));
         about.Children.Add(Text("brought to you by app.instinct AI", 14));
         about.Children.Add(Text("المطور: محمد النجار", 14));
         panel.Children.Add(new Border { CornerRadius = new CornerRadius(12), Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(224,224,230)), BorderThickness = new Thickness(1), Child = about });
         panel.Children.Add(new TextBlock { Text = "سيُثبَّت البرنامج في Program Files. تُفحَص المتطلبات وتُنزَّل من Microsoft عند الحاجة. يلزم اتصال بالإنترنت للمتطلبات الناقصة.", TextWrapping = TextWrapping.Wrap, FontSize = 13, Margin = new Thickness(0,18,0,12), Foreground = Brushes.DimGray });
         var status = new TextBlock { Text = "جاهز للتثبيت", TextWrapping = TextWrapping.Wrap, FontSize = 13, Margin = new Thickness(0,0,0,10) };
         panel.Children.Add(status);
-        var progress = new ProgressBar { Height = 4, Visibility = Visibility.Collapsed, IsIndeterminate = true, Margin = new Thickness(0,0,0,12) };
+        var progress = new ProgressBar { Height = 6, Visibility = Visibility.Collapsed, IsIndeterminate = true, Margin = new Thickness(0,0,0,12), Foreground = new SolidColorBrush(Color.FromRgb(22,163,74)), Background = new SolidColorBrush(Color.FromRgb(222,222,228)), BorderThickness = new Thickness(0) };
         panel.Children.Add(progress);
-        var install = new Button { Content = "install now", Height = 44, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(0,103,192)), BorderThickness = new Thickness(0) };
+        var install = new Button { Content = "install now", Height = 44, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = Brushes.Black, Background = new SolidColorBrush(Color.FromRgb(76,194,255)), BorderThickness = new Thickness(0) };
         panel.Children.Add(install);
+        var done = new StackPanel { Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Center };
+        done.Children.Add(new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(22), Background = new SolidColorBrush(Color.FromRgb(22,163,74)), HorizontalAlignment = HorizontalAlignment.Center, Child = new TextBlock { Text = "\uE73E", FontFamily = new FontFamily("Segoe MDL2 Assets, Segoe Fluent Icons"), FontSize = 22, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } });
+        done.Children.Add(new TextBlock { Text = "تم التثبيت", FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,8,0,0) });
+        panel.Children.Add(done);
+        Action showDone = () => { progress.Visibility = Visibility.Collapsed; install.Visibility = Visibility.Collapsed; status.Visibility = Visibility.Collapsed; done.Visibility = Visibility.Visible; };
         bool busy = false;
         window.Closing += (_, e) => { if (busy) e.Cancel = true; };
         install.Click += async (_, _) =>
@@ -73,15 +80,17 @@ static class Program
             try
             {
                 await Task.Run(() => Install(text => window.Dispatcher.Invoke(() => status.Text = text)));
-                status.Text = "اكتمل التثبيت. يمكنك فتح البرنامج من قائمة ابدأ.";
-                progress.Visibility = Visibility.Collapsed;
+                showDone();
+                LaunchApp();
             }
             catch (Exception e) { status.Text = "تعذر التثبيت: " + e.Message + " يمكنك المحاولة مجددًا."; install.IsEnabled = true; progress.Visibility = Visibility.Collapsed; }
             finally { busy = false; }
         };
         window.Content = panel;
-        if (args.Length == 2 && args[0] == "--preview")
+        if (args.Length == 2 && (args[0] == "--preview" || args[0] == "--preview-busy" || args[0] == "--preview-done"))
         {
+            if (args[0] == "--preview-busy") { install.IsEnabled = false; progress.Visibility = Visibility.Visible; status.Text = "جارٍ تثبيت ملفات البرنامج..."; }
+            if (args[0] == "--preview-done") showDone();
             window.Content = null;
             var preview = new Border { Width = 490, Height = 580, Background = window.Background, Child = panel, FlowDirection = FlowDirection.RightToLeft };
             preview.Measure(new Size(490,580)); preview.Arrange(new Rect(0,0,490,580)); preview.UpdateLayout();
@@ -91,6 +100,11 @@ static class Program
             using var file = File.Create(args[1]); encoder.Save(file); return;
         }
         app.Run(window);
+    }
+    /// <summary>Starts the installed app de-elevated (through Explorer) so it does not run as administrator.</summary>
+    static void LaunchApp()
+    {
+        try { Process.Start(new ProcessStartInfo("explorer.exe", "\"" + Path.Combine(Target, "FluentPrayerTimes.exe") + "\"") { UseShellExecute = true }); } catch { }
     }
     static TextBlock Text(string text, double size) => new() { Text = text, FontSize = size, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, FlowDirection = FlowDirection.LeftToRight, Margin = new Thickness(0,4,0,4) };
     static void StopApp() { foreach (var p in Process.GetProcessesByName("FluentPrayerTimes")) { p.Kill(); p.WaitForExit(10000); p.Dispose(); } }
@@ -138,6 +152,8 @@ static class Program
         string shortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Product + ".lnk");
         string escaped = Target.Replace("'", "''");
         Run("powershell.exe", "-NoProfile -NonInteractive -Command \"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + shortcut.Replace("'", "''") + "');$s.TargetPath='" + escaped + "\\FluentPrayerTimes.exe';$s.WorkingDirectory='" + escaped + "';$s.IconLocation='" + escaped + "\\app.ico';$s.Save()\"");
+        string desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Product + ".lnk");
+        Run("powershell.exe", "-NoProfile -NonInteractive -Command \"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + desktop.Replace("'", "''") + "');$s.TargetPath='" + escaped + "\\FluentPrayerTimes.exe';$s.WorkingDirectory='" + escaped + "';$s.IconLocation='" + escaped + "\\app.ico';$s.Save()\"");
         using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes");
         key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.2.0"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
         key.SetValue("DisplayIcon", Path.Combine(Target, "app.ico")); key.SetValue("UninstallString", "\"" + Path.Combine(Target, "Uninstall.exe") + "\" --uninstall");
