@@ -10,7 +10,7 @@
         </Grid.RowDefinitions>
 
         <Grid x:Name="TitleBarArea" Grid.Row="0">
-            <StackPanel Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center">
+            <StackPanel x:Name="TitleStack" Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center">
                 <Image x:Name="ImgTitle" Width="16" Height="16" VerticalAlignment="Center" />
                 <TextBlock Text="Fluent Prayer Times" FontSize="12" VerticalAlignment="Center" />
             </StackPanel>
@@ -104,7 +104,11 @@
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="اللغة / Language" FontSize="16" FontWeight="SemiBold" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="اللغة / Language" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button x:Name="BtnApply" Grid.Column="1" Content="تطبيق التغييرات" Style="{StaticResource AccentButtonStyle}" Click="ApplyChanges_Click" />
+                                </Grid>
                                 <ComboBox x:Name="CmbLang" MinWidth="240" SelectionChanged="Lang_Changed" />
                                 <TextBlock Text="المظهر" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" />
                                 <TextBlock Text="الخلفية" FontWeight="SemiBold" />

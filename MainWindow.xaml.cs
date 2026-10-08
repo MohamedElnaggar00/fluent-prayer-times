@@ -69,7 +69,7 @@ public sealed partial class MainWindow : Window
 
         double dpi = GetDpiForWindow(_hwnd) / 96.0;
         if (dpi < 1) dpi = 1;
-        AppWindow.Resize(new SizeInt32((int)(470 * dpi), (int)(610 * dpi)));
+        AppWindow.Resize(new SizeInt32((int)(470 * dpi), (int)(748 * dpi)));
         try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "app.ico")); } catch { }
         AppWindow.Closing += (s, a) => { if (!_quit) { a.Cancel = true; HideFlyout(); } };
         HideFromTaskbar();
@@ -176,6 +176,19 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         SetWidget(TglWidget.IsOn);
+    }
+
+    void ApplyChanges_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _s.Save();
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping 127.0.0.1 -n 3 >nul & start \"\" \"" + exe + "\"") { CreateNoWindow = true, UseShellExecute = false });
+        }
+        catch { }
+        Quit();
     }
 
     void Quit()
@@ -750,6 +763,18 @@ public sealed partial class MainWindow : Window
     void ApplyFlow()
     {
         var fd = L.Flow;
+        try
+        {
+            // mirror the window frame like the sidebar: caption (close) button moves to the left in RTL languages
+            var hw = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            long ex = GetWindowLongPtr(hw, -20).ToInt64();
+            ex = L.Rtl ? (ex | 0x00400000L) : (ex & ~0x00400000L);
+            SetWindowLongPtr(hw, -20, new IntPtr(ex));
+        }
+        catch { }
+        TitleStack.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        TitleStack.Margin = L.Rtl ? new Thickness(0, 0, 14, 0) : new Thickness(14, 0, 0, 0);
+        TitleStack.FlowDirection = fd;
         foreach (FrameworkElement el in new FrameworkElement[] { Nav, PanelTimes, PanelCalendar, PanelConvert, PanelAzkar, PanelSettings, PanelAbout, BtnAccentCustom, BtnAccentReset })
             el.FlowDirection = fd;
     }
