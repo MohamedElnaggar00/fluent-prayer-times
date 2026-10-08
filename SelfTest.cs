@@ -39,6 +39,7 @@ static class SelfTest
             JsonElement Rel(string json) => JsonDocument.Parse(json).RootElement;
             string Rj(string tag, bool draft, bool pre, string asset) => "{\"draft\":" + (draft ? "true" : "false") + ",\"prerelease\":" + (pre ? "true" : "false") + ",\"tag_name\":\"" + tag + "\",\"assets\":[{\"name\":\"" + asset + "\",\"browser_download_url\":\"https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/" + tag + "/" + asset + "\"}]}";
             Check("newer stable release gives installer url", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) != null);
+            Check("runtime-dependent installer accepted", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "FluentPrayerTimes-v9.0.0-installer-.NET-runtime-dependent-win-x64.exe")), new Version(1, 1, 1)) != null);
             Check("same version gives none", MainWindow.UpdateDownload(Rel(Rj("v1.1.1", false, false, "FluentPrayerTimes-v1.1.1-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("older gives none", MainWindow.UpdateDownload(Rel(Rj("v1.0.0", false, false, "FluentPrayerTimes-v1.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("prerelease ignored", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, true, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);

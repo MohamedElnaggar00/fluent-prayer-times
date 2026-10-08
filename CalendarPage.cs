@@ -12,15 +12,15 @@ sealed class CalendarPage : StackPanel
     int _y, _m;
     readonly TextBlock _title = new() { FontSize = 22, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center };
     readonly TextBlock _sub = HijriUtil.Sec(new TextBlock { FontSize = 13, HorizontalAlignment = HorizontalAlignment.Center });
-    readonly Grid _grid = new() { FlowDirection = FlowDirection.RightToLeft, RowSpacing = 2, ColumnSpacing = 2 };
+    readonly Grid _grid = new() { FlowDirection = L.Flow, RowSpacing = 2, ColumnSpacing = 2 };
     readonly StackPanel _list = new() { Spacing = 6 };
-    static readonly string[] Head = { "السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة" };
+    static string[] Head => new[] { L.T("السبت"), L.T("الأحد"), L.T("الاثنين"), L.T("الثلاثاء"), L.T("الأربعاء"), L.T("الخميس"), L.T("الجمعة") };
 
     public CalendarPage()
     {
         Spacing = 10;
         (_y, _m, _) = HijriUtil.ToHijri(DateTime.Today);
-        Children.Add(new TextBlock { Text = "التقويم الهجري", FontSize = 24, FontWeight = FontWeights.SemiBold });
+        Children.Add(new TextBlock { Text = L.T("التقويم الهجري"), FontSize = 24, FontWeight = FontWeights.SemiBold });
 
         var nav = new Grid();
         nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -34,7 +34,7 @@ sealed class CalendarPage : StackPanel
         mid.Children.Add(_title); mid.Children.Add(_sub);
         Grid.SetColumn(prev, 0); Grid.SetColumn(mid, 1); Grid.SetColumn(next, 2);
         nav.Children.Add(prev); nav.Children.Add(mid); nav.Children.Add(next);
-        var today = new Button { Content = "اليوم", HorizontalAlignment = HorizontalAlignment.Center };
+        var today = new Button { Content = L.T("اليوم"), HorizontalAlignment = HorizontalAlignment.Center };
         today.Click += (a, b) => { (_y, _m, _) = HijriUtil.ToHijri(DateTime.Today); Render(); };
 
         var box = new StackPanel { Spacing = 8 };
@@ -43,7 +43,7 @@ sealed class CalendarPage : StackPanel
         Children.Add(HijriUtil.Card(box, new Thickness(8, 12, 8, 12)));
         Children.Add(today);
         var evBox = new StackPanel { Spacing = 8 };
-        evBox.Children.Add(new TextBlock { Text = "المناسبات في هذا الشهر", FontSize = 16, FontWeight = FontWeights.SemiBold });
+        evBox.Children.Add(new TextBlock { Text = L.T("المناسبات في هذا الشهر"), FontSize = 16, FontWeight = FontWeights.SemiBold });
         evBox.Children.Add(_list);
         Children.Add(HijriUtil.Card(evBox));
         Render();
@@ -105,7 +105,7 @@ sealed class CalendarPage : StackPanel
             foreach (var e in evs)
             {
                 any = true;
-                var row = new Grid { ColumnSpacing = 10, FlowDirection = FlowDirection.RightToLeft };
+                var row = new Grid { ColumnSpacing = 10, FlowDirection = L.Flow };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -121,6 +121,6 @@ sealed class CalendarPage : StackPanel
                 _list.Children.Add(row);
             }
         }
-        if (!any) _list.Children.Add(HijriUtil.Sec(new TextBlock { Text = "لا توجد مناسبات في هذا الشهر", FontSize = 13 }));
+        if (!any) _list.Children.Add(HijriUtil.Sec(new TextBlock { Text = L.T("لا توجد مناسبات في هذا الشهر"), FontSize = 13 }));
     }
 }

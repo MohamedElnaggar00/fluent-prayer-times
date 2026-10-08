@@ -18,15 +18,14 @@
                 <ToggleButton x:Name="BtnPin" Width="21.6" Height="19.2" MinWidth="0" MinHeight="0" Padding="0" Click="Pin_Click" ToolTipService.ToolTip="تثبيت فوق كل النوافذ">
                     <FontIcon Glyph="&#xE718;" FontSize="9.6" />
                 </ToggleButton>
-                <Button Width="21.6" Height="19.2" MinWidth="0" MinHeight="0" Padding="0" Click="Close_Click" ToolTipService.ToolTip="إخفاء">
+                <Button x:Name="BtnHide" Width="21.6" Height="19.2" MinWidth="0" MinHeight="0" Padding="0" Click="Close_Click" ToolTipService.ToolTip="إخفاء">
                     <FontIcon Glyph="&#xE711;" FontSize="8.4" />
                 </Button>
             </StackPanel>
-            <TextBlock x:Name="TxtHeader" Grid.Column="1" Text="الصلاة القادمة" FontSize="10.8" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       FlowDirection="RightToLeft" TextTrimming="CharacterEllipsis"
+            <TextBlock x:Name="TxtHeader" Grid.Column="1" Text="الصلاة القادمة" FontSize="10.8" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </Grid>
-        <StackPanel Grid.Row="1" Spacing="0" FlowDirection="RightToLeft">
+        <StackPanel x:Name="PanelInfo" Grid.Row="1" Spacing="0">
             <StackPanel Orientation="Horizontal" Spacing="5">
                 <TextBlock x:Name="TxtName" Text="--" FontSize="15.6" FontWeight="SemiBold" />
                 <TextBlock x:Name="TxtTime" Text="" FontSize="9.6" VerticalAlignment="Bottom" Margin="0,0,0,2" FlowDirection="LeftToRight"

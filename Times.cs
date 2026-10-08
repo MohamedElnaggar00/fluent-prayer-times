@@ -13,7 +13,7 @@ public class Loc {
     public string CountryAr { get; set; } = "مصر";
     public string Cc { get; set; } = "EG";               // ISO country code
     public string? Tz { get; set; }                      // IANA zone of the place (learned from the API)
-    public string Display => string.IsNullOrEmpty(CountryAr) ? NameAr : NameAr + "، " + CountryAr;
+    public string Display { get { var n = L.T(NameAr); if (!L.IsArabic && !UseCity && System.Text.RegularExpressions.Regex.IsMatch(n, "[\u0600-\u06FF]")) n = ""; var c = string.IsNullOrEmpty(Cc) ? L.T(CountryAr) : L.CountryName(Cc, CountryAr); return n == "" ? c : string.IsNullOrEmpty(c) ? n : n + L.T("، ") + c; } }
     public string Key => UseCity ? "c:" + Name : $"g:{Lat:F3},{Lon:F3}";
 }
 public class Settings {
@@ -29,6 +29,7 @@ public class Settings {
     public bool NotifyAdhan { get; set; } = true;
     public string Accent { get; set; } = "";           // "" = built-in teal, else #RRGGBB
     public bool AutoUpdate { get; set; } = true;
+    public string Lang { get; set; } = "";             // "" = follow Windows display language
     public string UpdateSeen { get; set; } = "";
     public bool AzkarOn { get; set; } = false;
     public int AzkarMinutes { get; set; } = 30;
@@ -70,7 +71,7 @@ public static class Cities {
 
 public static class Times {
     public static readonly string[] Keys = { "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha" };
-    public static readonly string[] Names = { "الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء" };
+    public static string[] Names => new[] { L.T("الفجر"), L.T("الشروق"), L.T("الظهر"), L.T("العصر"), L.T("المغرب"), L.T("العشاء") };
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
     static string CacheFile => Path.Combine(Dir, "cache3.json");
     public static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
@@ -137,9 +138,9 @@ public static class Times {
     public static (string num, string unit) FmtDyn(TimeSpan s)
     {
         if (s < TimeSpan.Zero) s = TimeSpan.Zero;
-        if (s.TotalHours >= 1) return ($"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}", "ساعة");
-        if (s.TotalMinutes >= 1) return ($"{s.Minutes:00}:{s.Seconds:00}", "دقيقة");
-        return ($"{s.Seconds:00}", "ثانية");
+        if (s.TotalHours >= 1) return ($"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}", L.T("ساعة"));
+        if (s.TotalMinutes >= 1) return ($"{s.Minutes:00}:{s.Seconds:00}", L.T("دقيقة"));
+        return ($"{s.Seconds:00}", L.T("ثانية"));
     }
     public enum Phase { Next, Adhan, Iqama, IqamaNow }
     public record Disp(Phase Phase, int Idx, DateTime Time, bool Tomorrow, TimeSpan Left);
@@ -220,7 +221,7 @@ public static class Times {
                 var parts = outp.Trim().Split(',');
                 if (pr.ExitCode == 0 && parts.Length == 2) {
                     lat = double.Parse(parts[0], CultureInfo.InvariantCulture); lon = double.Parse(parts[1], CultureInfo.InvariantCulture);
-                    how = "نظام الموقع في ويندوز"; ok = true;
+                    how = L.T("نظام الموقع في ويندوز"); ok = true;
                 }
             } catch { }
         }
@@ -228,7 +229,7 @@ public static class Times {
             try {
                 using var doc = JsonDocument.Parse(await Http.GetStringAsync("https://ipwho.is/"));
                 var r = doc.RootElement;
-                if (r.GetProperty("success").GetBoolean()) { lat = r.GetProperty("latitude").GetDouble(); lon = r.GetProperty("longitude").GetDouble(); how = "عنوان IP (تقريبي)"; ok = true; }
+                if (r.GetProperty("success").GetBoolean()) { lat = r.GetProperty("latitude").GetDouble(); lon = r.GetProperty("longitude").GetDouble(); how = L.T("عنوان IP (تقريبي)"); ok = true; }
             } catch { }
         }
         if (!ok) return (null, "");

@@ -24,7 +24,7 @@ public sealed partial class MainWindow : Window
 
     const int CmdOpen = 1, CmdSettings = 2, CmdExit = 3, CmdWidget = 4, CmdUpdate = 5;
     WidgetWindow? _widget;
-    string _wName = "--", _wTime = "", _wCount = "--:--", _wHeader = "الصلاة القادمة", _wUnit = "";
+    string _wName = "--", _wTime = "", _wCount = "--:--", _wHeader = L.T("الصلاة القادمة"), _wUnit = "";
     Windows.UI.Color? _wColor; bool _wMsg;
 
     readonly Settings _s = Settings.Load();
@@ -59,9 +59,10 @@ public sealed partial class MainWindow : Window
     {
         ApplyAccentResources(ParseHex(_s.Accent));
         InitializeComponent();
+        L.Register(RootGrid); ApplyFlow(); L.Refresh();
         if (App.Preview != null) _s.WidgetVisible = false;   // CI preview: never inherit a saved widget state
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        Title = "مواقيت الصلاة - Fluent Prayer Times";
+        Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarArea);
         if (AppWindow.Presenter is OverlappedPresenter mainPresenter) { mainPresenter.IsMaximizable = false; mainPresenter.IsMinimizable = false; }   // only close remains
@@ -80,7 +81,7 @@ public sealed partial class MainWindow : Window
             ImgTitle.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
             ImgLogo.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
             var v = typeof(App).Assembly.GetName().Version;
-            if (v != null) TxtVersion.Text = "الإصدار " + v.Major + "." + v.Minor + "." + v.Build;
+            if (v != null) TxtVersion.Text = L.T("الإصدار ") + v.Major + "." + v.Minor + "." + v.Build;
         }
         catch { }
         RootGrid.SizeChanged += (s2, e2) => FitPages();
@@ -96,7 +97,7 @@ public sealed partial class MainWindow : Window
 
         _menu = new TrayMenuWindow(OnMenu);
         _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, TaskbarIsLight() ? "tray-dark.ico" : "tray-white.ico"),
-            new[] { (CmdOpen, "فتح"), (CmdWidget, "ويدجت سطح المكتب"), (CmdSettings, "الإعدادات"), (CmdUpdate, "التحقق من التحديثات"), (CmdExit, "خروج") },
+            new[] { (CmdOpen, L.T("فتح")), (CmdWidget, L.T("ويدجت سطح المكتب")), (CmdSettings, L.T("الإعدادات")), (CmdUpdate, L.T("التحقق من التحديثات")), (CmdExit, L.T("خروج")) },
             ToggleFlyout, OnMenu, OnContext);
 
         _hover = new HoverWindow(() =>
@@ -354,7 +355,7 @@ public sealed partial class MainWindow : Window
     {
         var picker = new ColorPicker { Color = ParseHex(_s.Accent), IsAlphaEnabled = false, IsMoreButtonVisible = true, IsColorChannelTextInputVisible = true, IsHexInputVisible = true, FlowDirection = FlowDirection.LeftToRight };
         picker.ColorChanged += (s2, a2) => SetAccent(a2.NewColor, true);
-        var dlg = new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = "لون مخصص", Content = new ScrollViewer { Content = picker, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto }, CloseButtonText = "تم", DefaultButton = ContentDialogButton.Close, FlowDirection = FlowDirection.RightToLeft };
+        var dlg = new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = L.T("لون مخصص"), Content = new ScrollViewer { Content = picker, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto }, CloseButtonText = L.T("تم"), DefaultButton = ContentDialogButton.Close, FlowDirection = L.Flow };
         try { await dlg.ShowAsync(); } catch { }
     }
     void AccentReset_Click(object sender, RoutedEventArgs e)
@@ -490,11 +491,7 @@ public sealed partial class MainWindow : Window
             _loadedDay = Times.Now(_s.Location.Tz).Date;
             for (int i = 0; i < 6; i++) _rowTime[i].Text = Times.F12(r.Today.T[Times.Keys[i]]);
         }
-        TxtCity.Text = _s.Location.Display;
-        var ar = new CultureInfo("ar-EG");
-        string greg = Times.Now(_s.Location.Tz).ToString("dddd d MMMM yyyy", ar);
-        TxtDates.Text = r.Today != null ? greg + "  -  " + r.Today.Hijri : greg;
-        TxtStatus.Text = r.Today == null ? "لا يوجد اتصال ولا مواقيت محفوظة" : (r.Offline ? "دون اتصال - من آخر بيانات محفوظة" : "");
+        ShowDatesAndCity(r);
         _hl = -2;
         Tick();
     }
@@ -511,12 +508,22 @@ public sealed partial class MainWindow : Window
         _s.Save();
     }
 
+    void ShowDatesAndCity(Times.Result r)
+    {
+        TxtCity.Text = _s.Location.Display;
+        var tn = Times.Now(_s.Location.Tz);
+        string greg = L.IsArabic ? tn.ToString("dddd d MMMM yyyy", new CultureInfo("ar-EG"))
+            : HijriUtil.Days[(int)tn.DayOfWeek] + " " + tn.Day + " " + HijriUtil.GMonths[tn.Month - 1] + " " + tn.Year;
+        TxtDates.Text = r.Today != null ? greg + "  -  " + L.LocHijri(r.Today.Hijri) : greg;
+        TxtStatus.Text = r.Today == null ? L.T("لا يوجد اتصال ولا مواقيت محفوظة") : (r.Offline ? L.T("دون اتصال - من آخر بيانات محفوظة") : "");
+    }
+
     void Tick()
     {
         if (DateTime.Now >= _azkarNext)
         {
             _azkarNext = DateTime.Now.AddMinutes(Math.Max(1, _s.AzkarMinutes));
-            try { _tray.Notify("منبه الأذكار", AzkarData.RandomShort().Text); } catch { }
+            try { _tray.Notify(L.T("منبه الأذكار"), AzkarData.RandomShort().Text); } catch { }
         }
         var now = Times.Now(_s.Location.Tz);
         bool stale = _loadedDay != now.Date || _res?.Today == null;
@@ -525,10 +532,10 @@ public sealed partial class MainWindow : Window
         if (App.Preview != null) { PreviewTick(now); return; }
         if (_res?.Today == null)
         {
-            TxtNextLabel.Text = "الصلاة القادمة";
+            TxtNextLabel.Text = L.T("الصلاة القادمة");
             TxtNextName.Text = "--"; TxtNextTime.Text = ""; SetMainCount("--:--", "", null, false);
-            SetHover("مواقيت الصلاة", "--:--", "", _s.Location.Display, null, false);
-            PushWidget("--", "", "--:--", "الصلاة القادمة", null, false);
+            SetHover(L.T("مواقيت الصلاة"), "--:--", "", _s.Location.Display, null, false);
+            PushWidget("--", "", "--:--", L.T("الصلاة القادمة"), null, false);
             return;
         }
         if (_s.NotifyAdhan)
@@ -542,7 +549,7 @@ public sealed partial class MainWindow : Window
                 {
                     _lastAdhan = key;
                     bool custom = Sounds.Available("adhan", _s.AdhanSound);
-                    try { _tray.Notify("مواقيت الصلاة", "حان الآن موعد أذان " + Times.Names[i], custom); } catch { }
+                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان الآن موعد أذان ") + Times.Names[i], custom); } catch { }
                     if (custom) Sounds.Play("adhan", _s.AdhanSound);
                 }
                 var iq = pt.AddMinutes(_s.IqamaFor(i));
@@ -551,7 +558,7 @@ public sealed partial class MainWindow : Window
                 {
                     _lastIqama = ikey;
                     bool custom = Sounds.Available("iqama", _s.IqamaSound);
-                    try { _tray.Notify("مواقيت الصلاة", "حان وقت إقامة صلاة " + Times.Names[i], custom); } catch { }
+                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان وقت إقامة صلاة ") + Times.Names[i], custom); } catch { }
                     if (custom) Sounds.Play("iqama", _s.IqamaSound);
                 }
             }
@@ -559,10 +566,10 @@ public sealed partial class MainWindow : Window
         var st = Times.State(now, _res.Today.T, _res.Tomorrow?.T, _s);
         if (st == null)
         {
-            TxtNextLabel.Text = "الصلاة القادمة";
+            TxtNextLabel.Text = L.T("الصلاة القادمة");
             TxtNextName.Text = "--"; SetMainCount("--:--", "", null, false);
-            SetHover("مواقيت الصلاة", "--:--", "", _s.Location.Display, null, false);
-            PushWidget("--", "", "--:--", "الصلاة القادمة", null, false);
+            SetHover(L.T("مواقيت الصلاة"), "--:--", "", _s.Location.Display, null, false);
+            PushWidget("--", "", "--:--", L.T("الصلاة القادمة"), null, false);
             return;
         }
         Render(st, Times.F12(_res.Today.T[Times.Keys[st.Idx]]));
@@ -570,23 +577,23 @@ public sealed partial class MainWindow : Window
 
     void Render(Times.Disp d, string adhanTime)
     {
-        string nm = Times.Names[d.Idx] + (d.Tomorrow ? " (غدًا)" : "");
+        string nm = Times.Names[d.Idx] + (d.Tomorrow ? L.T(" (غدًا)") : "");
         string tm = d.Time.ToString("h:mm tt", CultureInfo.InvariantCulture);
-        string label = "الصلاة القادمة", count, unit, title; Windows.UI.Color? color = null; bool msg = false;
+        string label = L.T("الصلاة القادمة"), count, unit, title; Windows.UI.Color? color = null; bool msg = false;
         switch (d.Phase)
         {
             case Times.Phase.Adhan:
-                label = "الصلاة الحالية"; count = "حان وقت الاذان"; unit = ""; color = Green; msg = true;
-                title = "موعد صلاة " + Times.Names[d.Idx]; tm = adhanTime; break;
+                label = L.T("الصلاة الحالية"); count = L.T("حان وقت الاذان"); unit = ""; color = Green; msg = true;
+                title = L.T("موعد صلاة ") + Times.Names[d.Idx]; tm = adhanTime; break;
             case Times.Phase.Iqama:
-                label = "الإقامة"; count = Times.FmtMS(d.Left); unit = "دقيقة : ثانية"; color = Amber;
-                title = "باقي على إقامة صلاة " + Times.Names[d.Idx]; break;
+                label = L.T("الإقامة"); count = Times.FmtMS(d.Left); unit = L.T("دقيقة : ثانية"); color = Amber;
+                title = L.T("باقي على إقامة صلاة ") + Times.Names[d.Idx]; break;
             case Times.Phase.IqamaNow:
-                label = "الصلاة الحالية"; count = "حان وقت الاقامة"; unit = ""; color = Green; msg = true;
-                title = "إقامة صلاة " + Times.Names[d.Idx]; break;
+                label = L.T("الصلاة الحالية"); count = L.T("حان وقت الاقامة"); unit = ""; color = Green; msg = true;
+                title = L.T("إقامة صلاة ") + Times.Names[d.Idx]; break;
             default:
-                count = Times.FmtHM(d.Left); unit = "ساعة";
-                title = d.Idx == 1 ? "باقي على الشروق" : "باقي على صلاة " + nm; break;
+                count = Times.FmtHM(d.Left); unit = L.T("ساعة");
+                title = d.Idx == 1 ? L.T("باقي على الشروق") : L.T("باقي على صلاة ") + nm; break;
         }
         TxtNextLabel.Text = label;
         TxtNextName.Text = nm; TxtNextTime.Text = tm;
@@ -696,11 +703,10 @@ public sealed partial class MainWindow : Window
     // ---------- settings ----------
     void LoadSettingsUi()
     {
-        CmbCountry.Items.Add("كل دول العالم");
-        foreach (var c in Countries.All) CmbCountry.Items.Add(c.Ar);
+        FillLangCombo();
+        FillLocationCombos();
         TglAdhan.IsOn = _s.NotifyAdhan;
         BuildIqamaAndSounds();
-        foreach (var c in Cities.All) CmbCity.Items.Add(c.Ar);
         SyncCitySelection();
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
         TxtLon.Text = _s.Location.Lon.ToString("F4", CultureInfo.InvariantCulture);
@@ -713,6 +719,60 @@ public sealed partial class MainWindow : Window
         InitAccentUi();
     }
 
+    void FillLocationCombos()
+    {
+        bool was = _loading; _loading = true;
+        CmbCountry.Items.Clear(); CmbCity.Items.Clear();
+        CmbCountry.Items.Add(L.T("كل دول العالم"));
+        foreach (var c in Countries.All) CmbCountry.Items.Add(L.CountryName(c.Cc, c.Ar));
+        foreach (var c in Cities.All) CmbCity.Items.Add(L.T(c.Ar));
+        _loading = was;
+    }
+
+    void FillLangCombo()
+    {
+        bool was = _loading; _loading = true;
+        CmbLang.Items.Clear();
+        CmbLang.Items.Add("Auto / تلقائي");
+        foreach (var n in L.Native) CmbLang.Items.Add(n);
+        CmbLang.SelectedIndex = string.IsNullOrEmpty(_s.Lang) ? 0 : Math.Max(0, Array.IndexOf(L.Codes, _s.Lang) + 1);
+        _loading = was;
+    }
+
+    void Lang_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || CmbLang.SelectedIndex < 0) return;
+        _s.Lang = CmbLang.SelectedIndex == 0 ? "" : L.Codes[CmbLang.SelectedIndex - 1];
+        _s.Save();
+        ApplyLanguage();
+    }
+
+    void ApplyFlow()
+    {
+        var fd = L.Flow;
+        foreach (FrameworkElement el in new FrameworkElement[] { Nav, PanelTimes, PanelCalendar, PanelConvert, PanelAzkar, PanelSettings, PanelAbout, BtnAccentCustom, BtnAccentReset })
+            el.FlowDirection = fd;
+    }
+
+    public void ApplyLanguage()
+    {
+        L.Set(_s.Lang);
+        ApplyFlow(); L.Refresh();
+        Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
+        try { var v = typeof(App).Assembly.GetName().Version; if (v != null) TxtVersion.Text = L.T("الإصدار ") + v.Major + "." + v.Minor + "." + v.Build; } catch { }
+        bool was = _loading; _loading = true;
+        FillLocationCombos(); SyncCitySelection();
+        PanelCalendar.Children.Clear(); PanelCalendar.Children.Add(new CalendarPage());
+        PanelConvert.Children.Clear(); PanelConvert.Children.Add(new ConverterPage());
+        PanelAzkar.Children.Clear(); PanelAzkar.Children.Add(new AzkarPage(_s, OnAzkarChanged));
+        BuildIqamaAndSounds();
+        _loading = was;
+        _widget?.ApplyLang();
+        if (_res != null) ShowDatesAndCity(_res);
+        _hl = -2;
+        try { Tick(); } catch { }
+    }
+
     void SyncCitySelection()
     {
         bool was = _loading; _loading = true;
@@ -720,7 +780,7 @@ public sealed partial class MainWindow : Window
         CmbCity.SelectedIndex = i;
         int ci = Array.FindIndex(Countries.All, c => c.Cc == _s.Location.Cc);
         CmbCountry.SelectedIndex = ci < 0 ? 0 : ci + 1;
-        if (i < 0) CmbCity.PlaceholderText = _s.Location.NameAr;
+        if (i < 0) CmbCity.PlaceholderText = L.T(_s.Location.NameAr);
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
         TxtLon.Text = _s.Location.Lon.ToString("F4", CultureInfo.InvariantCulture);
         _loading = was;
@@ -768,9 +828,9 @@ public sealed partial class MainWindow : Window
             LstPlaces.ItemsSource = _places.Select(p => p.Label).ToList();
             _loading = false;
             LstPlaces.Visibility = Visibility.Visible;
-            if (_places.Count == 0) TxtDetect.Text = "لا توجد نتائج";
+            if (_places.Count == 0) TxtDetect.Text = L.T("لا توجد نتائج");
         }
-        catch { TxtDetect.Text = "فشل البحث - تأكد من الاتصال بالإنترنت"; }
+        catch { TxtDetect.Text = L.T("فشل البحث - تأكد من الاتصال بالإنترنت"); }
     }
 
     void Place_Selected(object sender, SelectionChangedEventArgs e)
@@ -784,11 +844,11 @@ public sealed partial class MainWindow : Window
 
     async void Detect_Click(object sender, RoutedEventArgs e)
     {
-        TxtDetect.Text = "جارٍ تحديد موقعك...";
+        TxtDetect.Text = L.T("جارٍ تحديد موقعك...");
         var (p, how) = await Times.Detect();
-        if (p == null) { TxtDetect.Text = "تعذّر تحديد الموقع"; return; }
+        if (p == null) { TxtDetect.Text = L.T("تعذّر تحديد الموقع"); return; }
         _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
-        TxtDetect.Text = "تم: " + how;
+        TxtDetect.Text = L.T("تم: ") + how;
         LocationChanged();
     }
 
@@ -799,11 +859,11 @@ public sealed partial class MainWindow : Window
             la >= -90 && la <= 90 && lo >= -180 && lo <= 180)
         {
             var rv = await Times.Reverse(la, lo);
-            string nm = rv != null && rv.Value.city != "" ? rv.Value.city : $"إحداثيات ({la:F3}, {lo:F3})";
+            string nm = rv != null && rv.Value.city != "" ? rv.Value.city : L.T("إحداثيات") + $" ({la:F3}, {lo:F3})";
             _s.Location = new Loc { Name = nm, NameAr = nm, Lat = la, Lon = lo, UseCity = false, CountryAr = rv?.country ?? "", Cc = rv?.cc ?? "" };
             LocationChanged();
         }
-        else TxtDetect.Text = "إحداثيات غير صحيحة";
+        else TxtDetect.Text = L.T("إحداثيات غير صحيحة");
     }
 
     void Dst_Checked(object sender, RoutedEventArgs e)
@@ -856,8 +916,8 @@ public sealed partial class MainWindow : Window
             PanelIqama.Children.Add(row);
         }
         PanelSounds.Children.Clear();
-        PanelSounds.Children.Add(SoundRow("صوت الأذان", "adhan", new[] { "الافتراضي (صوت الإشعار)", "أذان مختصر", "أذان كامل" }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }));
-        PanelSounds.Children.Add(SoundRow("صوت الإقامة", "iqama", new[] { "الافتراضي (صوت الإشعار)", "إقامة مختصرة", "إقامة كاملة" }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الأذان"), "adhan", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("أذان مختصر"), L.T("أذان كامل") }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الإقامة"), "iqama", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("إقامة مختصرة"), L.T("إقامة كاملة") }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }));
     }
 
     UIElement SoundRow(string title, string kind, string[] labels, string cur, Action<string> save)
@@ -870,14 +930,14 @@ public sealed partial class MainWindow : Window
         var cmb = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
         foreach (var l in labels) cmb.Items.Add(l);
         cmb.SelectedIndex = Math.Max(0, Array.IndexOf(SoundTags, cur));
-        var test = new Button { Content = "تجربة" };
+        var test = new Button { Content = L.T("تجربة") };
         var note = HijriUtil.Sec(new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap });
         cmb.SelectionChanged += (s2, e2) => { if (_loading || cmb.SelectedIndex < 0) return; save(SoundTags[cmb.SelectedIndex]); note.Text = ""; };
         test.Click += (s2, e2) =>
         {
             var mode = SoundTags[Math.Max(0, cmb.SelectedIndex)];
-            if (mode == "default") { note.Text = "الصوت الافتراضي هو صوت إشعار ويندوز."; return; }
-            note.Text = Sounds.Play(kind, mode) ? "" : "ملف الصوت غير موجود بعد في مجلد Audio.";
+            if (mode == "default") { note.Text = L.T("الصوت الافتراضي هو صوت إشعار ويندوز."); return; }
+            note.Text = Sounds.Play(kind, mode) ? "" : L.T("ملف الصوت غير موجود بعد في مجلد Audio.");
         };
         Grid.SetColumn(cmb, 0); Grid.SetColumn(test, 1);
         line.Children.Add(cmb); line.Children.Add(test);
@@ -893,13 +953,15 @@ public sealed partial class MainWindow : Window
         if (release.GetProperty("draft").GetBoolean() || release.GetProperty("prerelease").GetBoolean()) return null;
         var next = ReleaseVersion(release.GetProperty("tag_name").GetString());
         if (next == null || next <= installed) return null;
-        foreach (var asset in release.GetProperty("assets").EnumerateArray())
-        {
-            var name = asset.GetProperty("name").GetString();
-            if (name != $"FluentPrayerTimes-v{next.ToString(3)}-installer-win-x64.exe") continue;
-            var url = asset.GetProperty("browser_download_url").GetString();
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/", StringComparison.Ordinal)) return url;
-        }
+        // The running app already needs the .NET 8 runtime, so the small runtime-dependent installer is preferred; the self-contained one is the fallback.
+        foreach (var suffix in new[] { "installer-.NET-runtime-dependent-win-x64.exe", "installer-win-x64.exe" })
+            foreach (var asset in release.GetProperty("assets").EnumerateArray())
+            {
+                var name = asset.GetProperty("name").GetString();
+                if (name != $"FluentPrayerTimes-v{next.ToString(3)}-{suffix}") continue;
+                var url = asset.GetProperty("browser_download_url").GetString();
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/")) return url;
+            }
         throw new InvalidOperationException("New release has no supported installer.");
     }
 
@@ -909,7 +971,7 @@ public sealed partial class MainWindow : Window
     {
         if (_checkingUpdates) return;
         _checkingUpdates = true;
-        BtnUpdate.IsEnabled = false; BtnUpdate.Content = "جارٍ التحقق...";
+        BtnUpdate.IsEnabled = false; BtnUpdate.Content = L.T("جارٍ التحقق...");
         TxtUpdate.Text = "";
         string message;
         try
@@ -922,22 +984,22 @@ public sealed partial class MainWindow : Window
             using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var installed = ReleaseVersion(typeof(MainWindow).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
             var url = UpdateDownload(json.RootElement, installed);
-            if (url == null) message = "أنت تستخدم أحدث إصدار.";
+            if (url == null) message = L.T("أنت تستخدم أحدث إصدار.");
             else
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-                message = "تم فتح رابط تنزيل التحديث في المتصفح. بعد اكتمال التنزيل، شغّل المثبّت للتحديث.";
+                message = L.T("تم فتح رابط تنزيل التحديث في المتصفح. بعد اكتمال التنزيل، شغّل المثبّت للتحديث.");
             }
         }
         catch (Exception error)
         {
             try { Directory.CreateDirectory(App.AppData); File.AppendAllText(Path.Combine(App.AppData, "update.log"), DateTime.Now + " " + error.Message + "\n"); } catch { }
-            message = "تعذّر التحقق من التحديثات أو فتح التنزيل. تحقق من اتصال الإنترنت وحاول مجدداً.";
+            message = L.T("تعذّر التحقق من التحديثات أو فتح التنزيل. تحقق من اتصال الإنترنت وحاول مجدداً.");
         }
-        finally { _checkingUpdates = false; BtnUpdate.IsEnabled = true; BtnUpdate.Content = "التحقق من التحديثات"; }
+        finally { _checkingUpdates = false; BtnUpdate.IsEnabled = true; BtnUpdate.Content = L.T("التحقق من التحديثات"); }
         if (_quit) return;
         TxtUpdate.Text = message;
-        try { await new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = "التحقق من التحديثات", Content = message, CloseButtonText = "إغلاق", FlowDirection = FlowDirection.RightToLeft }.ShowAsync(); } catch { }
+        try { await new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = L.T("التحقق من التحديثات"), Content = message, CloseButtonText = L.T("إغلاق"), FlowDirection = L.Flow }.ShowAsync(); } catch { }
     }
 
     void Startup_Toggled(object sender, RoutedEventArgs e)
@@ -1021,14 +1083,14 @@ sealed class TrayMenuWindow : Window
     {
         var wa = DisplayArea.GetFromPoint(new PointInt32(ax, ay), DisplayAreaFallback.Nearest).WorkArea;
         _root.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
-        _root.FlowDirection = FlowDirection.RightToLeft;
+        _root.FlowDirection = L.Flow;
         _list.Children.Clear();
-        AddItem("فتح", "\uE8A7", 1);
-        AddItem("ويدجت سطح المكتب", "\uE8A1", 4, widgetOn);
-        AddItem("الإعدادات", "\uE713", 2);
-        AddItem("التحقق من التحديثات", "\uE895", 5);
+        AddItem(L.T("فتح"), "\uE8A7", 1);
+        AddItem(L.T("ويدجت سطح المكتب"), "\uE8A1", 4, widgetOn);
+        AddItem(L.T("الإعدادات"), "\uE713", 2);
+        AddItem(L.T("التحقق من التحديثات"), "\uE895", 5);
         _list.Children.Add(new Border { Height = 1, Margin = new Thickness(4, 3, 4, 3), Background = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-        AddItem("خروج", "\uE7E8", 3);
+        AddItem(L.T("خروج"), "\uE7E8", 3);
 
         double dpi = GetDpiForWindow(_hwnd) / 96.0;
         if (dpi < 1) dpi = 1;

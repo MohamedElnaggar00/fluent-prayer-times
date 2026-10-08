@@ -90,7 +90,7 @@ sealed class HoverWindow : Window
         row.Children.Add(_unit); row.Children.Add(_count);
         st.Children.Add(_title); st.Children.Add(row); st.Children.Add(_sub);
         _root.Children.Add(tint); _root.Children.Add(st);
-        _root.FlowDirection = FlowDirection.RightToLeft;
+        _root.FlowDirection = L.Flow;
         _root.RenderTransform = new TranslateTransform();
         _accent = _count.Foreground;
         Content = _root;

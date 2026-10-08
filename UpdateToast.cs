@@ -38,20 +38,20 @@ sealed class UpdateToast : Window
         var icon = new Border { Width = 40, Height = 40, CornerRadius = new CornerRadius(20), VerticalAlignment = VerticalAlignment.Top };
         icon.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
         icon.Child = new FontIcon { Glyph = "\uE896", FontSize = 18, Foreground = new SolidColorBrush(Microsoft.UI.Colors.White), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        var title = new TextBlock { Text = "تحديث جديد متاح", FontSize = 16, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
-        var sub = HijriUtil.Sec(new TextBlock { Text = "الإصدار " + version + " جاهز للتنزيل", FontSize = 13, TextWrapping = TextWrapping.Wrap });
+        var title = new TextBlock { Text = L.T("تحديث جديد متاح"), FontSize = 16, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+        var sub = HijriUtil.Sec(new TextBlock { Text = L.T("الإصدار ") + version + L.T(" جاهز للتنزيل"), FontSize = 13, TextWrapping = TextWrapping.Wrap });
         var texts = new StackPanel { Spacing = 2 };
         texts.Children.Add(title); texts.Children.Add(sub);
         var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         head.Children.Add(icon); head.Children.Add(texts);
 
-        var dl = new Button { Content = "تحميل", MinWidth = 120, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var dl = new Button { Content = L.T("تحميل"), MinWidth = 120, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         dl.Click += (a, b) =>
         {
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
             Close();
         };
-        var later = new Button { Content = "لاحقًا", MinWidth = 100 };
+        var later = new Button { Content = L.T("لاحقًا"), MinWidth = 100 };
         later.Click += (a, b) => Close();
         var btns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         btns.Children.Add(dl); btns.Children.Add(later);
@@ -59,7 +59,7 @@ sealed class UpdateToast : Window
         var st = new StackPanel { Spacing = 14, Padding = new Thickness(18, 16, 18, 16), VerticalAlignment = VerticalAlignment.Center };
         st.Children.Add(head); st.Children.Add(btns);
         _root.Children.Add(tint); _root.Children.Add(st);
-        _root.FlowDirection = FlowDirection.RightToLeft;
+        _root.FlowDirection = L.Flow;
         _root.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         Content = _root;
     }

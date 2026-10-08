@@ -16,8 +16,7 @@
             </StackPanel>
         </Grid>
 
-        <NavigationView x:Name="Nav" Grid.Row="1"
-                        FlowDirection="RightToLeft" PaneDisplayMode="LeftCompact" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
+        <NavigationView x:Name="Nav" Grid.Row="1" PaneDisplayMode="LeftCompact" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
                         OpenPaneLength="200" IsPaneOpen="False"
                         SelectionChanged="Nav_SelectionChanged">
             <NavigationView.MenuItems>
@@ -46,7 +45,7 @@
             <Grid>
                 <!-- ===== Times page ===== -->
                 <ScrollViewer x:Name="PageTimes" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
-                    <StackPanel x:Name="PanelTimes" Spacing="10" Padding="0,8,0,14" HorizontalAlignment="Center" FlowDirection="RightToLeft">
+                    <StackPanel x:Name="PanelTimes" Spacing="10" Padding="0,8,0,14" HorizontalAlignment="Center">
                         <StackPanel Spacing="2">
                             <TextBlock Text="مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" />
                             <TextBlock x:Name="TxtCity" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -87,25 +86,27 @@
 
                 <!-- ===== Calendar / converter / azkar pages (built in code) ===== -->
                 <ScrollViewer x:Name="PageCalendar" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-                    <StackPanel x:Name="PanelCalendar" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                    <StackPanel x:Name="PanelCalendar" Padding="0,8,0,20" HorizontalAlignment="Center" />
                 </ScrollViewer>
                 <ScrollViewer x:Name="PageConvert" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-                    <StackPanel x:Name="PanelConvert" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                    <StackPanel x:Name="PanelConvert" Padding="0,8,0,20" HorizontalAlignment="Center" />
                 </ScrollViewer>
                 <ScrollViewer x:Name="PageAzkar" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-                    <StackPanel x:Name="PanelAzkar" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft" />
+                    <StackPanel x:Name="PanelAzkar" Padding="0,8,0,20" HorizontalAlignment="Center" />
                 </ScrollViewer>
 
                 <!-- ===== Settings page ===== -->
                 <ScrollViewer x:Name="PageSettings" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-                    <StackPanel x:Name="PanelSettings" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft">
+                    <StackPanel x:Name="PanelSettings" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center">
                         <TextBlock Text="الإعدادات" FontSize="24" FontWeight="SemiBold" />
 
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="المظهر" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="اللغة / Language" FontSize="16" FontWeight="SemiBold" />
+                                <ComboBox x:Name="CmbLang" MinWidth="240" SelectionChanged="Lang_Changed" />
+                                <TextBlock Text="المظهر" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" />
                                 <TextBlock Text="الخلفية" FontWeight="SemiBold" />
                                 <StackPanel Orientation="Horizontal" Spacing="14">
                                     <RadioButton x:Name="RbMicaAlt" GroupName="bd" Content="Mica Alt" Tag="micaalt" Checked="Backdrop_Checked" MinWidth="0" />
@@ -129,8 +130,8 @@
                                     <StackPanel Spacing="14" FlowDirection="LeftToRight">
                                         <StackPanel x:Name="AccentPresets" Orientation="Horizontal" Spacing="8" />
                                         <StackPanel x:Name="AccentPresets2" Orientation="Horizontal" Spacing="8" />
-                                        <Button x:Name="BtnAccentCustom" Content="لون مخصص…" Click="AccentCustom_Click" FlowDirection="RightToLeft" />
-                                        <Button x:Name="BtnAccentReset" Content="استعادة اللون الافتراضي" Click="AccentReset_Click" FlowDirection="RightToLeft" />
+                                        <Button x:Name="BtnAccentCustom" Content="لون مخصص…" Click="AccentCustom_Click" />
+                                        <Button x:Name="BtnAccentReset" Content="استعادة اللون الافتراضي" Click="AccentReset_Click" />
                                     </StackPanel>
                                 </Expander>
                                 <TextBlock Text="يتأثر Mica وMica Alt بخلفية سطح المكتب، أما Acrylic فهو شفاف مع تمويه. يمكن أن تتبع السمة النظام أو تُحدَّد يدويًا."
@@ -240,7 +241,7 @@
 
                 <!-- ===== About page ===== -->
                 <ScrollViewer x:Name="PageAbout" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-                    <StackPanel x:Name="PanelAbout" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center" FlowDirection="RightToLeft">
+                    <StackPanel x:Name="PanelAbout" Spacing="10" Padding="0,8,0,20" HorizontalAlignment="Center">
                         <TextBlock Text="عن البرنامج" FontSize="24" FontWeight="SemiBold" />
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"

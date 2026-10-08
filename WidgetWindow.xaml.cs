@@ -41,6 +41,7 @@ public sealed partial class WidgetWindow : Window
     {
         _s = s;
         InitializeComponent();
+        L.Register(Content); ApplyLang();
         Title = "Fluent Prayer Times Widget";
         SystemBackdrop = new DesktopAcrylicBackdrop();
 
@@ -124,6 +125,14 @@ public sealed partial class WidgetWindow : Window
     }
 
     Brush? _countBrush;
+    public void ApplyLang()
+    {
+        TxtHeader.FlowDirection = L.Flow; PanelInfo.FlowDirection = L.Flow;
+        TxtHeader.HorizontalAlignment = HorizontalAlignment.Right;
+        ToolTipService.SetToolTip(BtnPin, L.T("تثبيت فوق كل النوافذ")); ToolTipService.SetToolTip(BtnHide, L.T("إخفاء"));
+        L.Refresh();
+    }
+
     public void SetInfo(string name, string time, string count, string header, Windows.UI.Color? color, bool message, string unit = "")
     {
         _countBrush ??= TxtCount.Foreground;

@@ -11,16 +11,16 @@ sealed class ConverterPage : StackPanel
     bool _busy;
     readonly TextBlock _fromLbl = new() { FontWeight = FontWeights.SemiBold, FontSize = 16 };
     readonly TextBlock _toLbl = new() { FontWeight = FontWeights.SemiBold, FontSize = 16 };
-    readonly NumberBox _day = new() { Header = "اليوم", Minimum = 1, Maximum = 31, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, Width = 100 };
-    readonly ComboBox _month = new() { Header = "الشهر", HorizontalAlignment = HorizontalAlignment.Stretch };
-    readonly NumberBox _year = new() { Header = "السنة", SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, Width = 120 };
+    readonly NumberBox _day = new() { Header = L.T("اليوم"), Minimum = 1, Maximum = 31, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, Width = 100 };
+    readonly ComboBox _month = new() { Header = L.T("الشهر"), HorizontalAlignment = HorizontalAlignment.Stretch };
+    readonly NumberBox _year = new() { Header = L.T("السنة"), SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, Width = 120 };
     readonly TextBlock _res = new() { FontSize = 26, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
     readonly TextBlock _resDay = HijriUtil.Sec(new TextBlock { FontSize = 14 });
 
     public ConverterPage()
     {
         Spacing = 10;
-        Children.Add(new TextBlock { Text = "محول التاريخ", FontSize = 24, FontWeight = FontWeights.SemiBold });
+        Children.Add(new TextBlock { Text = L.T("محول التاريخ"), FontSize = 24, FontWeight = FontWeights.SemiBold });
 
         var inp = new StackPanel { Spacing = 10 };
         inp.Children.Add(_fromLbl);
@@ -34,7 +34,7 @@ sealed class ConverterPage : StackPanel
         Children.Add(HijriUtil.Card(inp));
 
         var swap = new Button { Content = new FontIcon { Glyph = "\uE8AB" }, HorizontalAlignment = HorizontalAlignment.Center };
-        ToolTipService.SetToolTip(swap, "عكس اتجاه التحويل");
+        ToolTipService.SetToolTip(swap, L.T("عكس اتجاه التحويل"));
         swap.Click += (a, b) => Swap();
         Children.Add(swap);
 
@@ -52,8 +52,8 @@ sealed class ConverterPage : StackPanel
     {
         _busy = true;
         _fromHijri = fromHijri;
-        _fromLbl.Text = fromHijri ? "من: تاريخ هجري" : "من: تاريخ ميلادي";
-        _toLbl.Text = fromHijri ? "إلى: تاريخ ميلادي" : "إلى: تاريخ هجري";
+        _fromLbl.Text = fromHijri ? L.T("من: تاريخ هجري") : L.T("من: تاريخ ميلادي");
+        _toLbl.Text = fromHijri ? L.T("إلى: تاريخ ميلادي") : L.T("إلى: تاريخ هجري");
         _month.Items.Clear();
         foreach (var n in fromHijri ? HijriUtil.HMonths : HijriUtil.GMonths) _month.Items.Add(n);
         if (fromHijri) { var (y, m, d) = HijriUtil.ToHijri(date); _year.Value = y; _month.SelectedIndex = m - 1; _day.Value = d; _year.Minimum = HijriUtil.MinYear; _year.Maximum = HijriUtil.MaxYear; }
@@ -79,11 +79,11 @@ sealed class ConverterPage : StackPanel
     {
         if (_busy) return;
         var dt = Current();
-        if (dt == null) { _res.Text = "تاريخ غير صحيح"; _resDay.Text = ""; return; }
+        if (dt == null) { _res.Text = L.T("تاريخ غير صحيح"); _resDay.Text = ""; return; }
         var v = dt.Value;
-        if (_fromHijri) _res.Text = v.Day + " " + HijriUtil.GMonths[v.Month - 1] + " " + v.Year + " م";
-        else { var (y, m, d) = HijriUtil.ToHijri(v); _res.Text = d + " " + HijriUtil.HMonths[m - 1] + " " + y + " هـ"; }
-        _resDay.Text = "يوم " + HijriUtil.Days[(int)v.DayOfWeek];
+        if (_fromHijri) _res.Text = v.Day + " " + HijriUtil.GMonths[v.Month - 1] + " " + v.Year + L.T(" م");
+        else { var (y, m, d) = HijriUtil.ToHijri(v); _res.Text = d + " " + HijriUtil.HMonths[m - 1] + " " + y + L.T(" هـ"); }
+        _resDay.Text = L.T("يوم ") + HijriUtil.Days[(int)v.DayOfWeek];
     }
 
     void Swap()

@@ -8,10 +8,10 @@ namespace FluentPrayerTimes;
 public static class HijriUtil
 {
     public static readonly UmAlQuraCalendar Cal = new();
-    public static readonly string[] HMonths = { "محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة" };
-    public static readonly string[] GMonths = { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+    public static string[] HMonths => new[] { L.T("محرم"), L.T("صفر"), L.T("ربيع الأول"), L.T("ربيع الآخر"), L.T("جمادى الأولى"), L.T("جمادى الآخرة"), L.T("رجب"), L.T("شعبان"), L.T("رمضان"), L.T("شوال"), L.T("ذو القعدة"), L.T("ذو الحجة") };
+    public static string[] GMonths => new[] { L.T("يناير"), L.T("فبراير"), L.T("مارس"), L.T("أبريل"), L.T("مايو"), L.T("يونيو"), L.T("يوليو"), L.T("أغسطس"), L.T("سبتمبر"), L.T("أكتوبر"), L.T("نوفمبر"), L.T("ديسمبر") };
     // index = (int)DayOfWeek, Sunday = 0
-    public static readonly string[] Days = { "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت" };
+    public static string[] Days => new[] { L.T("الأحد"), L.T("الاثنين"), L.T("الثلاثاء"), L.T("الأربعاء"), L.T("الخميس"), L.T("الجمعة"), L.T("السبت") };
     public static int MinYear => Cal.GetYear(Cal.MinSupportedDateTime) + 1;
     public static int MaxYear => Cal.GetYear(Cal.MaxSupportedDateTime) - 1;
 
@@ -26,25 +26,25 @@ public static class HijriUtil
         var l = new List<string>();
         switch (m, d)
         {
-            case (1, 1): l.Add("رأس السنة الهجرية"); break;
-            case (1, 9): l.Add("يوم تاسوعاء"); break;
-            case (1, 10): l.Add("يوم عاشوراء"); break;
-            case (3, 12): l.Add("المولد النبوي الشريف"); break;
-            case (7, 27): l.Add("ذكرى الإسراء والمعراج"); break;
-            case (8, 15): l.Add("ليلة النصف من شعبان"); break;
-            case (9, 1): l.Add("أول أيام شهر رمضان المبارك"); break;
-            case (9, 21): l.Add("بداية العشر الأواخر من رمضان"); break;
-            case (9, 27): l.Add("ليلة السابع والعشرين (يُرجى فيها ليلة القدر)"); break;
-            case (10, 1): l.Add("عيد الفطر المبارك"); break;
-            case (12, 1): l.Add("بداية العشر الأوائل من ذي الحجة"); break;
-            case (12, 9): l.Add("يوم عرفة"); break;
-            case (12, 10): l.Add("عيد الأضحى المبارك"); break;
-            case (12, 11): l.Add("أول أيام التشريق"); break;
-            case (12, 12): l.Add("ثاني أيام التشريق"); break;
-            case (12, 13): l.Add("ثالث أيام التشريق"); break;
+            case (1, 1): l.Add(L.T("رأس السنة الهجرية")); break;
+            case (1, 9): l.Add(L.T("يوم تاسوعاء")); break;
+            case (1, 10): l.Add(L.T("يوم عاشوراء")); break;
+            case (3, 12): l.Add(L.T("المولد النبوي الشريف")); break;
+            case (7, 27): l.Add(L.T("ذكرى الإسراء والمعراج")); break;
+            case (8, 15): l.Add(L.T("ليلة النصف من شعبان")); break;
+            case (9, 1): l.Add(L.T("أول أيام شهر رمضان المبارك")); break;
+            case (9, 21): l.Add(L.T("بداية العشر الأواخر من رمضان")); break;
+            case (9, 27): l.Add(L.T("ليلة السابع والعشرين (يُرجى فيها ليلة القدر)")); break;
+            case (10, 1): l.Add(L.T("عيد الفطر المبارك")); break;
+            case (12, 1): l.Add(L.T("بداية العشر الأوائل من ذي الحجة")); break;
+            case (12, 9): l.Add(L.T("يوم عرفة")); break;
+            case (12, 10): l.Add(L.T("عيد الأضحى المبارك")); break;
+            case (12, 11): l.Add(L.T("أول أيام التشريق")); break;
+            case (12, 12): l.Add(L.T("ثاني أيام التشريق")); break;
+            case (12, 13): l.Add(L.T("ثالث أيام التشريق")); break;
         }
         if (m != 9 && !(m == 12 && d == 13) && d >= 13 && d <= 15)
-            l.Add("صيام أيام البيض (اليوم " + (d == 13 ? "الأول" : d == 14 ? "الثاني" : "الثالث") + ")");
+            l.Add(L.T("صيام أيام البيض (اليوم ") + (d == 13 ? L.T("الأول") : d == 14 ? L.T("الثاني") : L.T("الثالث")) + ")");
         return l;
     }
 
