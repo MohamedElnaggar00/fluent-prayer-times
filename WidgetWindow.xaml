@@ -22,7 +22,7 @@
                     <FontIcon Glyph="&#xE711;" FontSize="8.4" />
                 </Button>
             </StackPanel>
-            <TextBlock Grid.Column="1" Text="الصلاة القادمة" FontSize="10.8" VerticalAlignment="Center" HorizontalAlignment="Right"
+            <TextBlock x:Name="TxtHeader" Grid.Column="1" Text="الصلاة القادمة" FontSize="10.8" VerticalAlignment="Center" HorizontalAlignment="Right"
                        FlowDirection="RightToLeft" TextTrimming="CharacterEllipsis"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </Grid>
@@ -32,8 +32,8 @@
                 <TextBlock x:Name="TxtTime" Text="" FontSize="9.6" VerticalAlignment="Bottom" Margin="0,0,0,2" FlowDirection="LeftToRight"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
-            <TextBlock x:Name="TxtCount" Text="--:--:--" FontSize="22.8" FontWeight="SemiBold" FlowDirection="LeftToRight"
-                       HorizontalAlignment="Right" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            <TextBlock x:Name="TxtCount" Text="--:--" FontSize="22.8" FontWeight="SemiBold" FlowDirection="LeftToRight"
+                       HorizontalAlignment="Center" TextAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
         </StackPanel>
     </Grid>
 </Window>

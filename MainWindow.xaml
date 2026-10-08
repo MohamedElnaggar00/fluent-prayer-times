@@ -57,7 +57,7 @@
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                                 CornerRadius="8" Padding="16,12,16,12">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="الصلاة القادمة" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock x:Name="TxtNextLabel" Text="الصلاة القادمة" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <StackPanel Orientation="Horizontal" Spacing="14">
                                     <TextBlock x:Name="TxtNextName" Text="--" FontSize="26" FontWeight="SemiBold" />
                                     <TextBlock x:Name="TxtNextTime" Text="" FontSize="16" VerticalAlignment="Bottom" Margin="0,0,0,4"
@@ -66,7 +66,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8" FlowDirection="LeftToRight" HorizontalAlignment="Center" Margin="0,4,0,0">
                                     <TextBlock x:Name="TxtUnit" Text="" FontSize="18" VerticalAlignment="Bottom" Margin="0,0,0,6"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock x:Name="TxtCountdown" Text="--:--:--" FontSize="40" FontWeight="SemiBold"
+                                    <TextBlock x:Name="TxtCountdown" Text="--:--" FontSize="40" FontWeight="SemiBold"
                                                FlowDirection="LeftToRight" VerticalAlignment="Center"
                                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 </StackPanel>
@@ -185,6 +185,28 @@
                                 <TextBlock Text="الإشعارات" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="إشعار عند دخول وقت كل صلاة: حان الآن موعد أذان ..." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <ToggleSwitch x:Name="TglAdhan" OnContent="مفعّل" OffContent="متوقف" Toggled="Adhan_Toggled" />
+                                <StackPanel x:Name="PanelSounds" Spacing="10" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="الإقامة" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="مدة الانتظار بين الأذان والإقامة لكل صلاة (بالدقائق)" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <StackPanel x:Name="PanelIqama" Spacing="8" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="التحديثات" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="يُفحص أحدث إصدار مستقر على GitHub عند الضغط فقط، ويُفتح رابط التنزيل في المتصفح." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button x:Name="BtnUpdate" Content="التحقق من التحديثات" Click="Update_Click" HorizontalAlignment="Stretch" />
+                                <TextBlock x:Name="TxtUpdate" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                         </Border>
 

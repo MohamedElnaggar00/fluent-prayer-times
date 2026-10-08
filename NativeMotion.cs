@@ -23,6 +23,7 @@ static class NativeMotion
         }
         finally { if (tip != IntPtr.Zero) DestroyWindow(tip); }
     }
+    public static bool TooltipAnimations() => Enabled(0x1042) && Enabled(0x1016);
     public static void Tooltip(IntPtr hwnd, bool show, bool below)
     {
         bool animate = Enabled(0x1042) && Enabled(0x1016); // client area + tooltip animation

@@ -3,7 +3,7 @@
 
 مواقيت الصلاة بتصميم Fluent أصيل (WinUI 3): خلفية Mica Alt، وشريط تنقل جانبي، وبطاقات وأزرار اختيار ومفاتيح تبديل بلون تركوازي، مع أيقونة في منطقة الإشعارات وعدّاد تنازلي للصلاة القادمة.
 
-**المطوّر: محمد النجار** · *brought to you by app.instinct AI* · الإصدار 1.1.1
+**المطوّر: محمد النجار** · *brought to you by app.instinct AI* · الإصدار 1.2.0
 
 ## لقطات الشاشة / Screenshots
 
@@ -89,7 +89,7 @@ dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --
 ## 🚀 إصدار نسخة جديدة
 يتولى سير العمل في `.github/workflows/release.yml` البناء، والتحقق من هيكل الناتج، وتجربة تشغيل البرنامج، ثم إنشاء ملف zip ونشر الإصدار.
 
-- **tag:** `git tag v1.1.1 && git push origin v1.1.1`
+- **tag:** `git tag v1.2.0 && git push origin v1.2.0`
 - **يدويًا:** `Actions` ← `Build and Release` ← `Run workflow` ← أدخل رقم الإصدار
 
 > يُقرأ رقم الإصدار في صفحة "عن البرنامج" تلقائيًا من رقم الوسم (tag).

@@ -98,13 +98,13 @@ sealed class TrayIcon : IDisposable
     void Add() { var d = Data(NIF_MESSAGE | NIF_ICON | NIF_TIP); _added = Shell_NotifyIconW(NIM_ADD, ref d); }
 
     /// <summary>Shows a Windows notification (balloon/toast) from the tray icon.</summary>
-    public void Notify(string title, string text)
+    public void Notify(string title, string text, bool silent = false)
     {
         if (!_added) return;
         if (title.Length > 60) title = title[..60];
         if (text.Length > 250) text = text[..250];
         var d = Data(NIF_INFO);
-        d.szInfoTitle = title; d.szInfo = text; d.dwInfoFlags = 0;
+        d.szInfoTitle = title; d.szInfo = text; d.dwInfoFlags = silent ? 0x10u : 0u; // NIIF_NOSOUND when a custom sound plays
         Shell_NotifyIconW(NIM_MODIFY, ref d);
     }
 

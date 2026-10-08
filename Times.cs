@@ -30,6 +30,15 @@ public class Settings {
     public bool AzkarOn { get; set; } = false;
     public int AzkarMinutes { get; set; } = 30;
     public string Dst { get; set; } = "auto";           // auto | off | on
+    public int[] IqamaMin { get; set; } = { 20, 0, 20, 20, 15, 20 };   // minutes from adhan to iqama, indexed like Times.Keys (sunrise unused)
+    public string AdhanSound { get; set; } = "default";  // default | short | full
+    public string IqamaSound { get; set; } = "default";  // default | short | full
+    public int IqamaFor(int i)
+    {
+        var a = IqamaMin; int v = a != null && i >= 0 && i < a.Length ? a[i] : 0;
+        if (v <= 0) v = i == 4 ? 15 : 20;
+        return Math.Clamp(v, 2, 180);
+    }
     static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
     static string F => Path.Combine(Dir, "settings.json");
     public static Settings Load() { try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
@@ -128,6 +137,40 @@ public static class Times {
         if (s.TotalHours >= 1) return ($"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}", "ساعة");
         if (s.TotalMinutes >= 1) return ($"{s.Minutes:00}:{s.Seconds:00}", "دقيقة");
         return ($"{s.Seconds:00}", "ثانية");
+    }
+    public enum Phase { Next, Adhan, Iqama, IqamaNow }
+    public record Disp(Phase Phase, int Idx, DateTime Time, bool Tomorrow, TimeSpan Left);
+    /// <summary>Which stage the countdown is in: next prayer, adhan (1 min), waiting for iqama, iqama reached (1 min).</summary>
+    public static Disp? State(DateTime now, Dictionary<string, string> today, Dictionary<string, string>? tomorrow, Settings s)
+    {
+        var one = TimeSpan.FromMinutes(1);
+        for (int i = 0; i < Keys.Length; i++)
+        {
+            if (i == 1) continue; // sunrise has no adhan or iqama
+            var pt = At(now, today[Keys[i]]);
+            var el = now - pt;
+            if (el < TimeSpan.Zero) continue;
+            if (el < one) return new Disp(Phase.Adhan, i, pt, false, one - el);
+            var iq = pt.AddMinutes(s.IqamaFor(i));
+            if (now < iq) return new Disp(Phase.Iqama, i, iq, false, iq - now);
+            if (now - iq < one) return new Disp(Phase.IqamaNow, i, iq, false, TimeSpan.Zero);
+        }
+        var nx = Next(now, today, tomorrow);
+        return nx == null ? null : new Disp(Phase.Next, nx.Value.idx, nx.Value.time, nx.Value.tomorrow, nx.Value.time - now);
+    }
+    /// <summary>Hours:minutes (00:00), rounded up so the last partial minute still shows 00:01.</summary>
+    public static string FmtHM(TimeSpan s)
+    {
+        if (s < TimeSpan.Zero) s = TimeSpan.Zero;
+        int m = (int)Math.Ceiling(s.TotalMinutes);
+        return $"{m / 60:00}:{m % 60:00}";
+    }
+    /// <summary>Minutes:seconds (00:00) for the iqama countdown.</summary>
+    public static string FmtMS(TimeSpan s)
+    {
+        if (s < TimeSpan.Zero) s = TimeSpan.Zero;
+        int t = (int)Math.Ceiling(s.TotalSeconds);
+        return $"{t / 60:00}:{t % 60:00}";
     }
     public static string Fmt(TimeSpan s) { if (s < TimeSpan.Zero) s = TimeSpan.Zero; return $"{(int)s.TotalHours:00}:{s.Minutes:00}:{s.Seconds:00}"; }
 

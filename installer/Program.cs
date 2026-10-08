@@ -139,7 +139,7 @@ static class Program
         string escaped = Target.Replace("'", "''");
         Run("powershell.exe", "-NoProfile -NonInteractive -Command \"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + shortcut.Replace("'", "''") + "');$s.TargetPath='" + escaped + "\\FluentPrayerTimes.exe';$s.WorkingDirectory='" + escaped + "';$s.IconLocation='" + escaped + "\\app.ico';$s.Save()\"");
         using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes");
-        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.1.1"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
+        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.2.0"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
         key.SetValue("DisplayIcon", Path.Combine(Target, "app.ico")); key.SetValue("UninstallString", "\"" + Path.Combine(Target, "Uninstall.exe") + "\" --uninstall");
         key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }

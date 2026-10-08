@@ -121,9 +121,13 @@ public sealed partial class WidgetWindow : Window
         ApplySnap(best);
     }
 
-    public void SetInfo(string name, string time, string count)
+    Brush? _countBrush;
+    public void SetInfo(string name, string time, string count, string header, Windows.UI.Color? color, bool message)
     {
-        TxtName.Text = name; TxtTime.Text = time; TxtCount.Text = count;
+        _countBrush ??= TxtCount.Foreground;
+        TxtName.Text = name; TxtTime.Text = time; TxtCount.Text = count; TxtHeader.Text = header;
+        TxtCount.Foreground = color.HasValue ? new SolidColorBrush(color.Value) : _countBrush;
+        TxtCount.FontSize = message ? 15 : 22.8;
     }
 
     public void ShowWidget() { _wantVisible = true; ApplySnap(Math.Clamp(_s.WidgetSnap, 0, 7)); AppWindow.Show(); WindowChrome.Apply(_hwnd); }
