@@ -79,7 +79,7 @@ public sealed partial class MainWindow : Window
         try
         {
             ImgTitle.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
-            ImgLogo.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "tray.png")));
+            ImgLogo.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "logo.png")));
             var v = typeof(App).Assembly.GetName().Version;
             if (v != null) TxtVersion.Text = L.T("الإصدار ") + v.Major + "." + v.Minor + "." + v.Build;
         }
@@ -140,7 +140,7 @@ public sealed partial class MainWindow : Window
 
     void OnMenu(int cmd)
     {
-        if (cmd == CmdOpen) ShowFlyout(false);
+        if (cmd == CmdOpen) { Nav.SelectedItem = Nav.MenuItems[0]; ShowFlyout(false); }
         else if (cmd == CmdSettings) { Nav.SelectedItem = Nav.FooterMenuItems[0]; ShowFlyout(false); }
         else if (cmd == CmdWidget) SetWidget(!_s.WidgetVisible);
         else if (cmd == CmdUpdate) { Nav.SelectedItem = Nav.FooterMenuItems[0]; ShowFlyout(false); _ = CheckForUpdatesAsync(); }
@@ -219,7 +219,7 @@ public sealed partial class MainWindow : Window
         _hover.Hide();
         bool minimized = (AppWindow.Presenter as OverlappedPresenter)?.State == OverlappedPresenterState.Minimized;
         if (AppWindow.IsVisible && !minimized) HideFlyout();
-        else ShowFlyout(true);
+        else { Nav.SelectedItem = Nav.MenuItems[0]; ShowFlyout(true); }
     }
 
     async void HideFlyout()
@@ -652,6 +652,11 @@ public sealed partial class MainWindow : Window
                 SetAccent(ParseHex("#C239B3"), false);   // CI preview: show a non-default accent
                 Nav.SelectedItem = Nav.FooterMenuItems[0];
                 ExpAccent.IsExpanded = true;
+                ShowFlyout(false);
+            }
+            if (part == "calendar")
+            {
+                foreach (var m in Nav.MenuItems) if (m is NavigationViewItem ni && (ni.Tag as string) == "calendar") Nav.SelectedItem = ni;
                 ShowFlyout(false);
             }
             if (part == "about")

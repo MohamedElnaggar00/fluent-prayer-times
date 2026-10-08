@@ -26,8 +26,8 @@ sealed class CalendarPage : StackPanel
         nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         nav.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var prev = new Button { Content = new FontIcon { Glyph = "\uE76B" } };   // chevron: previous (right side in RTL)
-        var next = new Button { Content = new FontIcon { Glyph = "\uE76C" } };
+        var prev = new Button { Content = new FontIcon { Glyph = L.Rtl ? "\uE76C" : "\uE76B" } };   // chevron: previous (right side in RTL)
+        var next = new Button { Content = new FontIcon { Glyph = L.Rtl ? "\uE76B" : "\uE76C" } };
         prev.Click += (a, b) => Step(-1);
         next.Click += (a, b) => Step(1);
         var mid = new StackPanel { Spacing = 2 };

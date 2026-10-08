@@ -253,7 +253,7 @@
                             <StackPanel Spacing="8" HorizontalAlignment="Center">
                                 <Image x:Name="ImgLogo" Width="88" Height="88" HorizontalAlignment="Center" />
                                 <TextBlock Text="برنامج مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0" />
-                                <TextBlock x:Name="TxtVersion" Text="الإصدار 1.0" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center"
+                                <TextBlock x:Name="TxtVersion" Text="" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="brought to you by app.instinct AI" FontSize="14" FlowDirection="LeftToRight" HorizontalAlignment="Center" TextAlignment="Center"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" />
