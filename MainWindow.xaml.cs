@@ -57,6 +57,7 @@ public sealed partial class MainWindow : Window
 
     public MainWindow(bool startHidden)
     {
+        ApplyAccentResources(ParseHex(_s.Accent));
         InitializeComponent();
         if (App.Preview != null) _s.WidgetVisible = false;   // CI preview: never inherit a saved widget state
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -120,6 +121,7 @@ public sealed partial class MainWindow : Window
 
         if (_s.WidgetVisible) SetWidget(true);
         if (!startHidden) ShowFlyout(false);
+        StartUpdateWatch();
     }
 
     // ---------- window / tray ----------
@@ -288,6 +290,124 @@ public sealed partial class MainWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default,
         };
+    }
+
+    // ---------- accent colour ----------
+    static readonly string[] AccentSwatches = { "#00C4CC", "#0078D4", "#5B5FC7", "#8764B8", "#C239B3", "#E81123", "#F7630C", "#FFB900", "#10893E", "#69797E" };
+    static Windows.UI.Color DefaultAccent => Windows.UI.Color.FromArgb(255, 0, 196, 204);
+    static Windows.UI.Color ParseHex(string? hex)
+    {
+        try
+        {
+            var h = (hex ?? "").TrimStart('#');
+            if (h.Length == 6) return Windows.UI.Color.FromArgb(255, Convert.ToByte(h[..2], 16), Convert.ToByte(h[2..4], 16), Convert.ToByte(h[4..], 16));
+        }
+        catch { }
+        return DefaultAccent;
+    }
+    static Windows.UI.Color Mix(Windows.UI.Color c, byte tr, byte tg, byte tb, double t) =>
+        Windows.UI.Color.FromArgb(255, (byte)(c.R + (tr - c.R) * t), (byte)(c.G + (tg - c.G) * t), (byte)(c.B + (tb - c.B) * t));
+    static void ApplyAccentResources(Windows.UI.Color c)
+    {
+        var r = Application.Current.Resources;
+        r["SystemAccentColor"] = c;
+        r["SystemAccentColorDark1"] = Mix(c, 0, 0, 0, 0.18);
+        r["SystemAccentColorDark2"] = Mix(c, 0, 0, 0, 0.36);
+        r["SystemAccentColorDark3"] = Mix(c, 0, 0, 0, 0.54);
+        r["SystemAccentColorLight1"] = Mix(c, 255, 255, 255, 0.18);
+        r["SystemAccentColorLight2"] = Mix(c, 255, 255, 255, 0.36);
+        r["SystemAccentColorLight3"] = Mix(c, 255, 255, 255, 0.54);
+    }
+    void RefreshAccent()
+    {
+        // theme resources re-resolve on a theme change: flip the element theme and back
+        void Flip(FrameworkElement fe)
+        {
+            var was = fe.RequestedTheme;
+            fe.RequestedTheme = was == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark;
+            fe.RequestedTheme = was;
+        }
+        try { Flip(RootGrid); } catch { }
+        try { _widget?.RefreshTheme(); } catch { }
+        try { _hover.RefreshTheme(); } catch { }
+    }
+    void SetAccent(Windows.UI.Color c, bool save)
+    {
+        ApplyAccentResources(c);
+        AccentSwatch.Background = new SolidColorBrush(c);
+        if (save) { _s.Accent = $"#{c.R:X2}{c.G:X2}{c.B:X2}"; _s.Save(); }
+        RefreshAccent();
+    }
+    void InitAccentUi()
+    {
+        AccentSwatch.Background = new SolidColorBrush(ParseHex(_s.Accent));
+        int n = 0;
+        foreach (var hex in AccentSwatches)
+        {
+            var col = ParseHex(hex);
+            var b = new Button { Width = 40, Height = 40, Padding = new Thickness(0), CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(col), Tag = col };
+            b.Click += (a, e) => SetAccent((Windows.UI.Color)((Button)a).Tag, true);
+            (n++ < 5 ? AccentPresets : AccentPresets2).Children.Add(b);
+        }
+    }
+    async void AccentCustom_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new ColorPicker { Color = ParseHex(_s.Accent), IsAlphaEnabled = false, IsMoreButtonVisible = true, IsColorChannelTextInputVisible = true, IsHexInputVisible = true, FlowDirection = FlowDirection.LeftToRight };
+        picker.ColorChanged += (s2, a2) => SetAccent(a2.NewColor, true);
+        var dlg = new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = "لون مخصص", Content = new ScrollViewer { Content = picker, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto }, CloseButtonText = "تم", DefaultButton = ContentDialogButton.Close, FlowDirection = FlowDirection.RightToLeft };
+        try { await dlg.ShowAsync(); } catch { }
+    }
+    void AccentReset_Click(object sender, RoutedEventArgs e)
+    {
+        SetAccent(DefaultAccent, true);
+        _s.Accent = ""; _s.Save();
+    }
+
+    // ---------- automatic update check ----------
+    Microsoft.UI.Dispatching.DispatcherQueueTimer? _updFirst, _updTimer;
+    UpdateToast? _toast;
+    void StartUpdateWatch()
+    {
+        if (App.Preview != null) return;
+        _updFirst = DispatcherQueue.CreateTimer();
+        _updFirst.Interval = TimeSpan.FromSeconds(45); _updFirst.IsRepeating = false;
+        _updFirst.Tick += async (a, b) => await AutoUpdateAsync();
+        _updFirst.Start();
+        _updTimer = DispatcherQueue.CreateTimer();
+        _updTimer.Interval = TimeSpan.FromHours(6);
+        _updTimer.Tick += async (a, b) => await AutoUpdateAsync();
+        _updTimer.Start();
+    }
+    async Task AutoUpdateAsync()
+    {
+        if (!_s.AutoUpdate || _quit || _checkingUpdates) return;
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("FluentPrayerTimes/" + (typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"));
+            http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            using var response = await http.GetAsync("https://api.github.com/repos/" + UpdateRepo + "/releases/latest");
+            response.EnsureSuccessStatusCode();
+            using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var installed = ReleaseVersion(typeof(MainWindow).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
+            var url = UpdateDownload(json.RootElement, installed);
+            if (url == null || _quit) return;
+            var tag = (json.RootElement.GetProperty("tag_name").GetString() ?? "").TrimStart('v', 'V');
+            if (_s.UpdateSeen == tag) return;   // each new version is announced once
+            _s.UpdateSeen = tag; _s.Save();
+            _toast = new UpdateToast(tag, url, _s.Theme);
+            _toast.ShowToast();
+        }
+        catch (Exception error)
+        {
+            try { Directory.CreateDirectory(App.AppData); File.AppendAllText(Path.Combine(App.AppData, "update.log"), DateTime.Now + " auto: " + error.Message + "\n"); } catch { }
+        }
+    }
+    void AutoUpdate_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _s.AutoUpdate = TglAutoUpdate.IsOn;
+        _s.Save();
     }
 
     // ---------- navigation ----------
@@ -507,7 +627,22 @@ public sealed partial class MainWindow : Window
         {
             if (part == "main") ShowFlyout(false);
             if (part == "widget") SetWidget(true);
+            if (part == "settings")
+            {
+                SetAccent(ParseHex("#C239B3"), false);   // CI preview: show a non-default accent
+                Nav.SelectedItem = Nav.FooterMenuItems[0];
+                ExpAccent.IsExpanded = true;
+                ShowFlyout(false);
+            }
+            if (part == "picker")
+            {
+                SetAccent(ParseHex("#C239B3"), false);
+                Nav.SelectedItem = Nav.FooterMenuItems[0];
+                ShowFlyout(false);
+            }
+            if (part == "update") { _toast = new UpdateToast("1.2.5", "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); }
         }
+        if (_pt == 3 && part == "picker") AccentCustom_Click(this, new RoutedEventArgs());
         if (_pt == 2 && (part == "hover" || part == "hoverstress"))
         {
             var wa = DisplayArea.Primary.WorkArea;
@@ -574,6 +709,8 @@ public sealed partial class MainWindow : Window
         (_s.Dst switch { "off" => RbDstOff, "on" => RbDstOn, _ => RbDstAuto }).IsChecked = true;
         TglStartup.IsOn = _s.RunAtStartup;
         TglWidget.IsOn = _s.WidgetVisible;
+        TglAutoUpdate.IsOn = _s.AutoUpdate;
+        InitAccentUi();
     }
 
     void SyncCitySelection()

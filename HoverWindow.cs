@@ -115,6 +115,8 @@ sealed class HoverWindow : Window
         };
     }
 
+    public void RefreshTheme() { var w = _root.RequestedTheme; _root.RequestedTheme = w == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark; _root.RequestedTheme = w; }
+
     public void RequestShow(Action show)
     {
         if (Shown || _delay.IsRunning) return;

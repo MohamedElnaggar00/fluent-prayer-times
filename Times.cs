@@ -27,6 +27,9 @@ public class Settings {
     public int WidgetX { get; set; } = int.MinValue;
     public int WidgetY { get; set; } = int.MinValue;       // system | light | dark
     public bool NotifyAdhan { get; set; } = true;
+    public string Accent { get; set; } = "";           // "" = built-in teal, else #RRGGBB
+    public bool AutoUpdate { get; set; } = true;
+    public string UpdateSeen { get; set; } = "";
     public bool AzkarOn { get; set; } = false;
     public int AzkarMinutes { get; set; } = 30;
     public string Dst { get; set; } = "auto";           // auto | off | on

@@ -33,6 +33,8 @@ public sealed partial class WidgetWindow : Window
     CurPt _start;
     PointInt32 _winStart;
 
+    public void RefreshTheme() { var w = Surface.RequestedTheme; Surface.RequestedTheme = w == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark; Surface.RequestedTheme = w; }
+
     public Action? HiddenByUser;
 
     public WidgetWindow(Settings s)

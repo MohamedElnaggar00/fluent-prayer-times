@@ -17,7 +17,7 @@
         </Grid>
 
         <NavigationView x:Name="Nav" Grid.Row="1"
-                        PaneDisplayMode="LeftCompact" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
+                        FlowDirection="RightToLeft" PaneDisplayMode="LeftCompact" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
                         OpenPaneLength="200" IsPaneOpen="False"
                         SelectionChanged="Nav_SelectionChanged">
             <NavigationView.MenuItems>
@@ -118,6 +118,21 @@
                                     <RadioButton x:Name="RbThemeLight" GroupName="th" Content="فاتح" Tag="light" Checked="Theme_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbThemeDark" GroupName="th" Content="غامق" Tag="dark" Checked="Theme_Checked" MinWidth="0" />
                                 </StackPanel>
+                                <TextBlock Text="لون التطبيق" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <Expander x:Name="ExpAccent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Padding="0,10,0,10">
+                                            <Border x:Name="AccentSwatch" Width="22" Height="22" CornerRadius="11" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                                            <TextBlock Text="اختيار لون السمة" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="14" FlowDirection="LeftToRight">
+                                        <StackPanel x:Name="AccentPresets" Orientation="Horizontal" Spacing="8" />
+                                        <StackPanel x:Name="AccentPresets2" Orientation="Horizontal" Spacing="8" />
+                                        <Button x:Name="BtnAccentCustom" Content="لون مخصص…" Click="AccentCustom_Click" FlowDirection="RightToLeft" />
+                                        <Button x:Name="BtnAccentReset" Content="استعادة اللون الافتراضي" Click="AccentReset_Click" FlowDirection="RightToLeft" />
+                                    </StackPanel>
+                                </Expander>
                                 <TextBlock Text="يتأثر Mica وMica Alt بخلفية سطح المكتب، أما Acrylic فهو شفاف مع تمويه. يمكن أن تتبع السمة النظام أو تُحدَّد يدويًا."
                                            TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
@@ -204,7 +219,8 @@
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="التحديثات" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Text="يُفحص أحدث إصدار مستقر على GitHub عند الضغط فقط، ويُفتح رابط التنزيل في المتصفح." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <ToggleSwitch x:Name="TglAutoUpdate" Header="البحث التلقائي عن التحديثات" OnContent="مفعّل" OffContent="متوقف" Toggled="AutoUpdate_Toggled" />
+                                <TextBlock Text="يفحص البرنامج أحدث إصدار مستقر على GitHub في الخلفية عند التشغيل ثم كل ست ساعات، ويعرض إشعارًا فيه زر تحميل مباشر عند توفر إصدار أحدث." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <Button x:Name="BtnUpdate" Content="التحقق من التحديثات" Click="Update_Click" HorizontalAlignment="Stretch" />
                                 <TextBlock x:Name="TxtUpdate" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
