@@ -1,0 +1,81 @@
+name: Localization validation
+on:
+  push:
+    branches: ['**']
+    paths: ['.github/workflows/*uid5.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply patch on main, push side branch
+        shell: bash
+        run: |
+          set -e
+          echo 'H4sIAKP4x2oC/6VT32/aMBB+z19x68OUjBBCR2GUsY3SsVZiVUWR9jBNlUkOsHDszDG/2rG/fecECq3Yy+aHxPf57rvz+buYj8dQLk+4AVb5yrj8xmWslsGKJSKIMhgdAR2ycAXNuNaMm1EQjOqncY2dQTUM67WaUy6Xj3I5pVLpON+nT1CuN/0GlPIvmel8JHgEGTKBMaRMG84ERIJlGewJ4ByKjQMO7FasKBYhTjm04Quay5T3lC783PvpUsYeVKBZD8LWPoiPwbUR76HqbUOrLae8O+6k6bbkAWb8AV2JS7ijzbU0b09dl0vjubVGCG9ssOdDgdSrO8TzWk7pP9katXcHbE+lG72GxwPOOzTXkZLuLTPToKuSEZfo0nFXSYMrE1ywDC+5xsgovfbhhKVpwCN1QqSwgYiZaEp8m32CPXVXqIzLCZTa4GY+MA/aH8jXNu/V/c85Nx5ZLOgyGaGgFho9xxZc8Rh7Yq3mxs1TbA6Kz8+0SoYsm42YJodcDI2z0K9Dyf6qZ/+kB7sWise2erHuCXp7r0Af99kXTMM4pkL7gfU4eCJq6t543G/tqlQg4VorDWaKsCwyjzVLEASfYY5mdC+6zzn1MzVcSXAj6h16MJobQ2aiFpiBUbmzwLEBLmEw7INgcjJnE8ye57SVTpdUKd1vMAxIKKhVGhS3vWGGLzAgrRf2FZOxQNdMeXYoO7uEouej2c0no/DuE3RrtDtd+lA+Db1gqIi+XnNfxuZh/WBgBHwEl6xfEK7CsBba1feo+RZ8Db8P0Rccd3/J6oOdAcprMVw9G5fNfntEnWOlkRHo9uwLLJWefRaYoDRAEqSmWt6XR99/EMcNW/hwyySKIU8w2+67JDAZM70zlVygNlur8zB7OqGbGJqFXVxnRPr24cLIThRRiu48Myo5AGjU0cDGc+BZT0WuvGIerU7aJMjtfGycP5ntBhydBQAA' | base64 -d | gunzip > b3.patch
+          git apply --whitespace=nowarn b3.patch
+          rm b3.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q -b ui-batch5
+          git add -A
+          git commit -q -m "Taller window and mirrored title bar in RTL"
+          git push --force origin ui-batch5:feature/ui-batch5
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish FluentPrayerTimes.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -p:DebugType=none -o publish
+          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
+      - name: Install Windows App Runtime
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe -OutFile wari.exe
+          Start-Process .\wari.exe -ArgumentList '--quiet' -Wait
+      - name: Logic self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList '--selftest' -PassThru -Wait
+          $log = Join-Path $env:APPDATA 'FluentPrayerTimes\selftest.log'
+          if (Test-Path $log) { Get-Content $log | Select-Object -Last 5 }
+          if ($p.ExitCode -ne 0) { throw "selftest failed $($p.ExitCode)" }
+      - name: Captures
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force shots | Out-Null
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
+          }
+          foreach ($it in 'ar|main', 'ar|settings', 'en|main') {
+            $lang,$part = $it.Split('|')
+            $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=next","--part=$part","--lang=$lang" -PassThru
+            Start-Sleep -Seconds 7
+            Shot "$lang-$part"
+            if ($part -eq 'hover') {
+              Start-Process notepad.exe -WindowStyle Maximized
+              Start-Sleep -Seconds 4
+              Shot "hover-over-notepad"
+              Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+            }
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+          }
+          $pl = Join-Path $env:APPDATA 'FluentPrayerTimes\preview.log'
+          if (Test-Path $pl) { Get-Content $pl; Copy-Item $pl shots\preview.log }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loc
+          path: shots/
