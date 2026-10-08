@@ -1,0 +1,30 @@
+name: Fix README file names
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/*fin9.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename and clean
+        run: |
+          set -e
+          cd docs/screenshots
+          git mv -f 1-1-main-light-dark.jpg 1-main-light-dark.jpg
+          git mv -f 2-2-azkar-reminder.jpg 2-azkar-reminder.jpg
+          git mv -f 3-3-date-converter.jpg 3-date-converter.jpg
+          git mv -f 4-4-hijri-calendar.jpg 4-hijri-calendar.jpg
+          git mv -f 5-5-settings.jpg 5-settings.jpg
+          git rm -q 1-desktop-overview.jpg 2-prayer-times.jpg 3-azkar-reminder.jpg 4-date-converter.jpg 5-hijri-calendar.jpg
+          cd ../..
+          git mv -f 6-README.md README.md
+          git mv -f 7-README.en.md README.en.md
+          ls docs/screenshots
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -q -m 'README and screenshots: final file names, remove old screenshots'
+          git push origin HEAD:main
