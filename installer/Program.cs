@@ -109,7 +109,14 @@ static class Program
         try { Process.Start(new ProcessStartInfo("explorer.exe", "\"" + Path.Combine(Target, "FluentPrayerTimes.exe") + "\"") { UseShellExecute = true }); } catch { }
     }
     static TextBlock Text(string text, double size) => new() { Text = text, FontSize = size, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, FlowDirection = FlowDirection.LeftToRight, Margin = new Thickness(0,4,0,4) };
-    static void StopApp() { foreach (var p in Process.GetProcessesByName("FluentPrayerTimes")) { p.Kill(); p.WaitForExit(10000); p.Dispose(); } }
+    /// <summary>Asks the running tray app to exit on its own, then force-closes anything still alive.</summary>
+    static void StopApp()
+    {
+        try { using var quit = System.Threading.EventWaitHandle.OpenExisting("FluentPrayerTimes.Quit"); quit.Set(); } catch { }
+        var deadline = DateTime.UtcNow.AddSeconds(8);
+        while (Process.GetProcessesByName("FluentPrayerTimes").Length > 0 && DateTime.UtcNow < deadline) System.Threading.Thread.Sleep(200);
+        foreach (var p in Process.GetProcessesByName("FluentPrayerTimes")) { try { p.Kill(); p.WaitForExit(10000); } catch { } p.Dispose(); }
+    }
     static string Run(string exe, string arguments)
     {
         using var p = Process.Start(new ProcessStartInfo(exe, arguments) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true })!;

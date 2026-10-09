@@ -17,8 +17,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 SetupIconFile=..\app.ico
-CloseApplications=yes
-CloseApplicationsFilter=FluentPrayerTimes.exe
+CloseApplications=no
+RestartApplications=no
 UninstallDisplayIcon={app}\app.ico
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -26,8 +26,48 @@ Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 Name: "{group}\Fluent Prayer Times"; Filename: "{app}\FluentPrayerTimes.exe"
 Name: "{commondesktop}\Fluent Prayer Times"; Filename: "{app}\FluentPrayerTimes.exe"
 [Run]
-Filename: "{app}\FluentPrayerTimes.exe"; Description: "Launch Fluent Prayer Times"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\FluentPrayerTimes.exe"; Description: "Launch Fluent Prayer Times"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: NotWasRunning
+Filename: "{app}\FluentPrayerTimes.exe"; Parameters: "--tray"; Flags: nowait runasoriginaluser; Check: WasRunning
 [Code]
+var AppWasRunning: Boolean;
+function WasRunning: Boolean;
+begin
+  Result := AppWasRunning;
+end;
+function NotWasRunning: Boolean;
+begin
+  Result := not AppWasRunning;
+end;
+function RunPowerShell(Script: String): Boolean;
+var Code: Integer;
+begin
+  Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Script + '"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Log('AFC: powershell exec=' + IntToStr(Integer(Result)) + ' code=' + IntToStr(Code));
+  Result := Result and (Code = 0);
+end;
+// Asks the tray app to exit through its quit event, waits, then force-closes anything left.
+procedure StopApp;
+begin
+  RunPowerShell('try{$e=[Threading.EventWaitHandle]::OpenExisting(''FluentPrayerTimes.Quit'');[void]$e.Set()}catch{}; ' +
+    '$d=(Get-Date).AddSeconds(8); while((Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue) -and ((Get-Date) -lt $d)){Start-Sleep -Milliseconds 200}; ' +
+    'Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; ' +
+    'Start-Sleep -Milliseconds 500');
+end;
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  Log('AFC: step ' + IntToStr(Integer(CurStep)));
+  if CurStep = ssInstall then
+  begin
+    AppWasRunning := RunPowerShell('if(-not (Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue)){exit 1}');
+    if AppWasRunning then StopApp;
+  end;
+end;
+function InitializeUninstall: Boolean;
+begin
+  StopApp;
+  Result := True;
+end;
 function HasDotNet8: Boolean;
 var R: TFindRec;
 begin

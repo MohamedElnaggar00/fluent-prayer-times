@@ -191,6 +191,12 @@ public sealed partial class MainWindow : Window
         Quit();
     }
 
+    /// <summary>Called from the installer's quit signal on a background thread.</summary>
+    public void RequestQuit()
+    {
+        if (!DispatcherQueue.TryEnqueue(Quit)) Environment.Exit(0);
+    }
+
     void Quit()
     {
         _quit = true;

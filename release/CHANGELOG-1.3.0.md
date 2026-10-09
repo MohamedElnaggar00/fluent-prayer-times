@@ -14,6 +14,7 @@
 - Installers check the x64 .NET 8 runtime folder, install the correct Microsoft.NETCore.App runtime and verify Microsoft download signatures.
 - The small runtime-dependent installer uses a native front end that can start on a PC without .NET installed.
 - Windows App Runtime detection includes all users.
+- Installing or updating while the app is running in the system tray no longer fails with "Setup was unable to automatically close all applications". Both installers now close the running app automatically and start it again in the tray after an update. Uninstalling closes it too.
 
 ## سجل التغييرات - الإصدار 1.3.0
 
@@ -31,6 +32,7 @@
 - فحص مجلد بيئة التشغيل .NET 8 بنظام x64، وتنزيل Microsoft.NETCore.App الصحيح، والتحقق من التوقيع الرقمي لتنزيلات Microsoft.
 - واجهة تثبيت أصلية للنسخة الصغيرة المعتمدة على .NET، يمكنها بدء التشغيل حتى عند عدم تثبيت .NET مسبقًا.
 - فحص Windows App Runtime لجميع المستخدمين.
+- لم يعد التثبيت أو التحديث أثناء تشغيل البرنامج في شريط النظام يفشل برسالة "Setup was unable to automatically close all applications". يغلق المثبتان الآن البرنامج تلقائيًا ويعيدان تشغيله في شريط النظام بعد التحديث، كما يغلقه إلغاء التثبيت.
 
 ### Downloads / التنزيلات
 - Portable ZIP: extract and run. Requires .NET 8 x64, Visual C++ x64 and Windows App Runtime 1.6.

@@ -33,5 +33,18 @@ public partial class App : Application
         if (!created) { Environment.Exit(0); return; }
         bool hidden = Environment.GetCommandLineArgs().Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)) || Preview != null;
         _window = new MainWindow(hidden);
+        StartQuitListener(_window);
+    }
+
+    /// <summary>Lets an installer or updater ask the running tray app to exit cleanly (named event, no window needed).</summary>
+    static void StartQuitListener(MainWindow window)
+    {
+        try
+        {
+            var quit = new EventWaitHandle(false, EventResetMode.ManualReset, "FluentPrayerTimes.Quit");
+            quit.Reset();
+            new Thread(() => { quit.WaitOne(); window.RequestQuit(); }) { IsBackground = true, Name = "QuitListener" }.Start();
+        }
+        catch { }
     }
 }
