@@ -36,6 +36,15 @@ static class SelfTest
             Check("settings round trip", round != null && round.IqamaFor(0) == 30 && round.AdhanSound == "default");
             Check("old settings.json without new fields", JsonSerializer.Deserialize<Settings>("{\"NotifyAdhan\":true}")!.IqamaFor(4) == 15);
 
+            Check("minutes only, partial minute rounds up", Times.FmtMinutes(TimeSpan.FromSeconds(30)) == "1" && Times.FmtMinutes(TimeSpan.FromMinutes(13)) == "13");
+            Check("location method starts automatic", s.CalculationMethod == -1 && !Times.CalculationQuery(s).Contains("method="));
+            var oldKey = Times.CacheKey(s, day);
+            s.CalculationMethod = 5; s.AsrSchool = 1; s.HighLatitude = 0;
+            Check("calculation overrides transmitted", Times.CalculationQuery(s).Contains("method=5") && Times.CalculationQuery(s).Contains("school=1") && Times.CalculationQuery(s).Contains("latitudeAdjustmentMethod=0"));
+            Check("method changes invalidate cache", oldKey != Times.CacheKey(s, day));
+            s.CalculationMethod = 99; s.FajrAngle = 19.5; s.IshaAngle = 17.5;
+            Check("custom angles invariant", Times.CalculationQuery(s).Contains("methodSettings=19.5,null,17.5"));
+            Check("custom settings round trip", JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(s))!.FajrAngle == 19.5);
             JsonElement Rel(string json) => JsonDocument.Parse(json).RootElement;
             string Rj(string tag, bool draft, bool pre, string asset) => "{\"draft\":" + (draft ? "true" : "false") + ",\"prerelease\":" + (pre ? "true" : "false") + ",\"tag_name\":\"" + tag + "\",\"assets\":[{\"name\":\"" + asset + "\",\"browser_download_url\":\"https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/" + tag + "/" + asset + "\"}]}";
             Check("newer stable release gives installer url", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) != null);

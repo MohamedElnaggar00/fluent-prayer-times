@@ -150,7 +150,7 @@
                                 <TextBlock Text="الموقع" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="الدولة" FontWeight="SemiBold" />
                                 <ComboBox x:Name="CmbCountry" HorizontalAlignment="Stretch" SelectionChanged="Country_Changed" />
-                                <TextBlock Text="المدن المصرية" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <TextBlock Text="المدن" FontWeight="SemiBold" Margin="0,6,0,0" />
                                 <ComboBox x:Name="CmbCity" HorizontalAlignment="Stretch" SelectionChanged="City_Changed" />
                                 <TextBlock Text="البحث عن أي مدينة أو منطقة (في الدولة المختارة أو في كل العالم)" FontWeight="SemiBold" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 <Grid ColumnSpacing="8">
@@ -175,11 +175,13 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Border x:Name="CalculationCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                                 CornerRadius="8" Padding="16">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="التوقيت الصيفي" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="طريقة حساب المواقيت" FontSize="16" FontWeight="SemiBold" />
+                                <StackPanel x:Name="CalculationControls" Spacing="8" />
+                                <TextBlock Text="التوقيت الصيفي" FontWeight="SemiBold" />
                                 <StackPanel Orientation="Vertical" Spacing="2">
                                     <RadioButton x:Name="RbDstAuto" GroupName="dst" Content="تلقائي" Tag="auto" Checked="Dst_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbDstOff" GroupName="dst" Content="إيقاف (UTC+2)" Tag="off" Checked="Dst_Checked" MinWidth="0" />
@@ -255,8 +257,7 @@
                                 <TextBlock Text="برنامج مواقيت الصلاة" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0" />
                                 <TextBlock x:Name="TxtVersion" Text="" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock Text="brought to you by app.instinct AI" FontSize="14" FlowDirection="LeftToRight" HorizontalAlignment="Center" TextAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" />
+                                <HyperlinkButton Content="brought to you by Instinct" NavigateUri="https://instinct.com" FlowDirection="LeftToRight" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                 <HyperlinkButton Content="GitHub Repo Link" NavigateUri="https://github.com/MohamedElnaggar00/fluent-prayer-times" FlowDirection="LeftToRight" HorizontalAlignment="Center" />
                             </StackPanel>
                         </Border>
@@ -267,7 +268,7 @@
                                 <TextBlock Text="مصادر البيانات" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="المطور: محمد النجار" FontSize="13" />
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           Text="المواقيت من Aladhan API بطريقة الحساب 5 (الهيئة المصرية العامة للمساحة). البحث عن الأماكن من Open-Meteo. تُخزَّن الإعدادات والمواقيت محليًا في AppData، فيعمل البرنامج دون اتصال بالإنترنت." />
+                                           Text="المواقيت من Aladhan API وفق طريقة الحساب المختارة. البحث عن الأماكن من Open-Meteo. تُخزَّن الإعدادات والمواقيت محليًا في AppData، فيعمل البرنامج دون اتصال بالإنترنت." />
                             </StackPanel>
                         </Border>
                     </StackPanel>

@@ -33,6 +33,15 @@ public class Settings {
     public string UpdateSeen { get; set; } = "";
     public bool AzkarOn { get; set; } = false;
     public int AzkarMinutes { get; set; } = 30;
+    public int CalculationMethod { get; set; } = -1; // -1: local authority chosen by provider
+    public int AsrSchool { get; set; } = -1; // -1: provider default; 0: standard; 1: Hanafi
+    public int HighLatitude { get; set; } = -1; // -1: provider default; 0: none; 1: midnight; 2: seventh; 3: angle
+    public double FajrAngle { get; set; } = 18;
+    public double IshaAngle { get; set; } = 17;
+    public int CustomRule { get; set; } = 0; // 0: angles; 1: Fajr angle/Isha minutes; 2: both minutes; 3: Fajr minutes/Isha angle
+    public double FajrMinutes { get; set; } = 90;
+    public double IshaMinutes { get; set; } = 90;
+    public string TimeZoneOverride { get; set; } = "";
     public string Dst { get; set; } = "auto";           // auto | off | on
     public int[] IqamaMin { get; set; } = { 20, 0, 20, 20, 15, 20 };   // minutes from adhan to iqama, indexed like Times.Keys (sunrise unused)
     public string AdhanSound { get; set; } = "default";  // default | short | full
@@ -48,10 +57,10 @@ public class Settings {
     public static Settings Load() { try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
     public void Save() { try { Directory.CreateDirectory(Dir); File.WriteAllText(F, JsonSerializer.Serialize(this)); } catch { } }
     // Timezone sent to Aladhan. auto = the API's own zone for the place (follows Egypt's DST rules)
-    public string? TzParam => Location.Cc != "EG" ? null : Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
+    public string? TzParam => !string.IsNullOrWhiteSpace(TimeZoneOverride) ? TimeZoneOverride : Location.Cc != "EG" ? null : Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
 }
 public record City(string Name, string Ar, double Lat, double Lon);
-public record Day(Dictionary<string, string> T, string Hijri, string? Tz = null);
+public record Day(Dictionary<string, string> T, string Hijri, string? Tz = null, int Method = -1, int School = 0, int HighLatitude = 3);
 
 public static class Cities {
     public static readonly City[] All = {
@@ -76,29 +85,52 @@ public static class Times {
     static string CacheFile => Path.Combine(Dir, "cache3.json");
     public static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
     static readonly Regex Diac = new("[\u064B-\u0652\u0670]");
-    static string CK(Settings s, DateTime d) => $"{s.Location.Key}|{s.Dst}|{d:yyyy-MM-dd}";
+    public static string CalculationQuery(Settings s)
+    {
+        string q = "";
+        if (s.CalculationMethod >= 0) q += "&method=" + s.CalculationMethod;
+        if (s.AsrSchool >= 0) q += "&school=" + s.AsrSchool;
+        if (s.HighLatitude >= 0) q += "&latitudeAdjustmentMethod=" + s.HighLatitude;
+        if (s.CalculationMethod == 99)
+            q += "&methodSettings=" + s.FajrAngle.ToString(CultureInfo.InvariantCulture) + ",null," + s.IshaAngle.ToString(CultureInfo.InvariantCulture);
+        if (s.TzParam != null) q += "&timezonestring=" + Uri.EscapeDataString(s.TzParam);
+        return q;
+    }
+    public static string CacheKey(Settings s, DateTime d) => $"{s.Location.Key}|{s.Location.Cc}|{s.Location.Lat.ToString(CultureInfo.InvariantCulture)}|{s.Location.Lon.ToString(CultureInfo.InvariantCulture)}|{CalculationQuery(s)}|{s.CustomRule}|{s.FajrMinutes.ToString(CultureInfo.InvariantCulture)}|{s.IshaMinutes.ToString(CultureInfo.InvariantCulture)}|{d:yyyy-MM-dd}";
+    static string CK(Settings s, DateTime d) => CacheKey(s, d);
 
     static Dictionary<string, Day> Read() {
         try { return JsonSerializer.Deserialize<Dictionary<string, Day>>(File.ReadAllText(CacheFile)) ?? new(); } catch { return new(); }
     }
     static async Task<Day> Fetch(Settings s, DateTime d) {
         var l = s.Location; var inv = CultureInfo.InvariantCulture;
-        string tz = s.TzParam != null ? "&timezonestring=" + s.TzParam : "";
-        string meth = l.Cc == "EG" ? "&method=5" : "";   // Egypt: Egyptian General Authority of Survey; elsewhere the API picks the local authority
-        string byCoords = $"https://api.aladhan.com/v1/timings/{d:dd-MM-yyyy}?latitude={l.Lat.ToString(inv)}&longitude={l.Lon.ToString(inv)}{meth}{tz}";
-        string byCity = $"https://api.aladhan.com/v1/timingsByCity/{d:dd-MM-yyyy}?city={Uri.EscapeDataString(l.Name)}&country=Egypt&method=5{tz}";
-        string json;
-        if (l.UseCity) { try { json = await Http.GetStringAsync(byCity); } catch { json = await Http.GetStringAsync(byCoords); } }
-        else json = await Http.GetStringAsync(byCoords);
+        // Coordinates avoid assuming an Egyptian country for a worldwide city selection.
+        string url = $"https://api.aladhan.com/v1/timings/{d:dd-MM-yyyy}?latitude={l.Lat.ToString(inv)}&longitude={l.Lon.ToString(inv)}{CalculationQuery(s)}";
+        string json = await Http.GetStringAsync(url);
         using var doc = JsonDocument.Parse(json);
         var data = doc.RootElement.GetProperty("data");
         var t = data.GetProperty("timings"); var r = new Dictionary<string, string>();
-        foreach (var k in Keys) r[k] = t.GetProperty(k).GetString()![..5];
+        foreach (var k in Keys)
+        {
+            string value = t.GetProperty(k).GetString() ?? "";
+            if (value.Length < 5 || !DateTime.TryParseExact(value[..5], "HH:mm", inv, DateTimeStyles.None, out _))
+                throw new InvalidOperationException("Prayer time is unavailable for the selected calculation settings: " + k);
+            r[k] = value[..5];
+        }
+        if (s.CalculationMethod == 99)
+        {
+            if (s.CustomRule is 2 or 3) r["Fajr"] = At(d, r["Sunrise"]).AddMinutes(-s.FajrMinutes).ToString("HH:mm", inv);
+            if (s.CustomRule is 1 or 2) r["Isha"] = At(d, r["Maghrib"]).AddMinutes(s.IshaMinutes).ToString("HH:mm", inv);
+        }
         var h = data.GetProperty("date").GetProperty("hijri");
         string hij = $"{h.GetProperty("day").GetString()!.TrimStart('0')} {Diac.Replace(h.GetProperty("month").GetProperty("ar").GetString()!, "")} {h.GetProperty("year").GetString()} هـ";
         string? zone = null;
         try { zone = data.GetProperty("meta").GetProperty("timezone").GetString(); } catch { }
-        return new Day(r, hij, zone);
+        var meta = data.GetProperty("meta");
+        int method = meta.GetProperty("method").TryGetProperty("id", out var id) ? id.GetInt32() : s.CalculationMethod;
+        int school = meta.TryGetProperty("school", out var sc) && sc.GetString() == "HANAFI" ? 1 : 0;
+        int high = meta.TryGetProperty("latitudeAdjustmentMethod", out var hl) ? hl.GetString() switch { "NONE" => 0, "MIDDLE_OF_THE_NIGHT" => 1, "ONE_SEVENTH" => 2, _ => 3 } : 3;
+        return new Day(r, hij, zone, method, school, high);
     }
     static async Task<Day> Get(Settings s, DateTime d, Dictionary<string, Day> cache) {
         var k = CK(s, d); if (cache.TryGetValue(k, out var c)) return c;
@@ -111,7 +143,7 @@ public static class Times {
         try { today = await Get(s, now, cache); } catch { off = true; }
         if (today?.Tz != null && today.Tz != s.Location.Tz)
         {
-            s.Location.Tz = today.Tz; s.Save();
+            s.Location.Tz = today.Tz;
             now = Now(s.Location.Tz); tom = now.Date.AddDays(1);
             try { today = await Get(s, now, cache); } catch { off = true; }
         }
@@ -170,6 +202,7 @@ public static class Times {
         return $"{m / 60:00}:{m % 60:00}";
     }
     /// <summary>Minutes:seconds (00:00) for the iqama countdown.</summary>
+    public static string FmtMinutes(TimeSpan s) => Math.Max(0, (int)Math.Ceiling(s.TotalMinutes)).ToString(CultureInfo.InvariantCulture);
     public static string FmtMS(TimeSpan s)
     {
         if (s < TimeSpan.Zero) s = TimeSpan.Zero;

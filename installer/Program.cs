@@ -55,8 +55,10 @@ static class Program
         var about = new StackPanel { Margin = new Thickness(20), HorizontalAlignment = HorizontalAlignment.Center };
         about.Children.Add(new Border { Width = 104, Height = 104, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(0,103,192)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,14), Child = new Image { Width = 72, Height = 72, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")) } });
         about.Children.Add(Text("برنامج مواقيت الصلاة", 24));
-        about.Children.Add(Text("الإصدار 1.2.0", 14));
-        about.Children.Add(Text("brought to you by app.instinct AI", 14));
+        about.Children.Add(Text("الإصدار 1.3.0", 14));
+        var credit = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run("brought to you by Instinct")) { NavigateUri = new Uri("https://instinct.com") };
+        credit.RequestNavigate += (_, e) => { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); e.Handled = true; };
+        var creditText = Text("", 14); creditText.Inlines.Add(credit); about.Children.Add(creditText);
         about.Children.Add(Text("المطور: محمد النجار", 14));
         panel.Children.Add(new Border { CornerRadius = new CornerRadius(12), Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(224,224,230)), BorderThickness = new Thickness(1), Child = about });
         panel.Children.Add(new TextBlock { Text = "سيُثبَّت البرنامج في Program Files. تُفحَص المتطلبات وتُنزَّل من Microsoft عند الحاجة. يلزم اتصال بالإنترنت للمتطلبات الناقصة.", TextWrapping = TextWrapping.Wrap, FontSize = 13, Margin = new Thickness(0,18,0,12), Foreground = Brushes.DimGray });
@@ -122,7 +124,7 @@ static class Program
         return Directory.Exists(root) && Directory.GetDirectories(root).Any(d => Version.TryParse(Path.GetFileName(d), out var v) && v.Major == 8);
     }
     static bool VcPresent() => Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64")?.GetValue("Installed") is int installed && installed == 1;
-    static bool WarPresent() => Run("powershell.exe", "-NoProfile -NonInteractive -Command \"[bool](Get-AppxPackage -Name Microsoft.WindowsAppRuntime.1.6 | Where-Object { $_.Architecture -eq 'X64' -and $_.Status -eq 'Ok' })\"").Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
+    static bool WarPresent() => Run("powershell.exe", "-NoProfile -NonInteractive -Command \"[bool](Get-AppxPackage -AllUsers -Name Microsoft.WindowsAppRuntime.1.6 | Where-Object { $_.Architecture -eq 'X64' -and $_.Status -eq 'Ok' })\"").Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
     static void Dependency(string url, string arguments)
     {
         string file = Path.Combine(Path.GetTempPath(), "FluentPrayerTimes-" + Guid.NewGuid() + ".exe");
@@ -138,9 +140,10 @@ static class Program
     }
     static void Install(Action<string> status)
     {
+        if (!Environment.Is64BitProcess) throw new Exception("يتطلب المثبت عملية x64.");
         if (!Environment.Is64BitOperatingSystem) throw new Exception("يتطلب البرنامج Windows x64.");
         status("جارٍ فحص المتطلبات...");
-        if (!DotNetPresent()) { status("جارٍ تنزيل وتثبيت .NET 8..."); Dependency("https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe", "/install /quiet /norestart"); if (!DotNetPresent()) throw new Exception("لم يكتمل تثبيت .NET 8."); }
+        if (!DotNetPresent()) { status("جارٍ تنزيل وتثبيت .NET 8..."); Dependency("https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.exe", "/install /quiet /norestart"); if (!DotNetPresent()) throw new Exception("لم يكتمل تثبيت .NET 8."); }
         if (!VcPresent()) { status("جارٍ تنزيل وتثبيت Visual C++..."); Dependency("https://aka.ms/vc14/vc_redist.x64.exe", "/install /quiet /norestart"); if (!VcPresent()) throw new Exception("لم يكتمل تثبيت Visual C++."); }
         if (!WarPresent()) { status("جارٍ تنزيل وتثبيت Windows App Runtime 1.6..."); Dependency("https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe", "--quiet"); if (!WarPresent()) throw new Exception("لم يكتمل تثبيت Windows App Runtime 1.6."); }
         status("جارٍ تثبيت ملفات البرنامج...");
@@ -155,7 +158,7 @@ static class Program
         string desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Product + ".lnk");
         Run("powershell.exe", "-NoProfile -NonInteractive -Command \"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + desktop.Replace("'", "''") + "');$s.TargetPath='" + escaped + "\\FluentPrayerTimes.exe';$s.WorkingDirectory='" + escaped + "';$s.IconLocation='" + escaped + "\\app.ico';$s.Save()\"");
         using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes");
-        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.2.0"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
+        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.3.0"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
         key.SetValue("DisplayIcon", Path.Combine(Target, "app.ico")); key.SetValue("UninstallString", "\"" + Path.Combine(Target, "Uninstall.exe") + "\" --uninstall");
         key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }

@@ -128,7 +128,9 @@ public sealed partial class WidgetWindow : Window
     public void ApplyLang()
     {
         TxtHeader.FlowDirection = L.Flow; PanelInfo.FlowDirection = L.Flow;
-        TxtHeader.HorizontalAlignment = HorizontalAlignment.Right;
+        TxtHeader.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        TxtHeader.TextAlignment = L.Rtl ? TextAlignment.Right : TextAlignment.Left;
+        PrayerRow.HorizontalAlignment = HorizontalAlignment.Center;
         ToolTipService.SetToolTip(BtnPin, L.T("تثبيت فوق كل النوافذ")); ToolTipService.SetToolTip(BtnHide, L.T("إخفاء"));
         L.Refresh();
     }

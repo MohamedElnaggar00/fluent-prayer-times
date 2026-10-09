@@ -493,11 +493,16 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    int _reloadGeneration;
     async Task ReloadAsync()
     {
+        int generation = ++_reloadGeneration;
+        var snapshot = System.Text.Json.JsonSerializer.Deserialize<Settings>(System.Text.Json.JsonSerializer.Serialize(_s))!;
         _lastTry = DateTime.Now;
         Times.Result r;
-        try { r = await Times.Load(_s); } catch { return; }
+        try { r = await Times.Load(snapshot); } catch { return; }
+        if (generation != _reloadGeneration) return;
+        if (r.Today?.Tz != null) { _s.Location.Tz = r.Today.Tz; _s.Save(); }
         _res = r;
         if (r.Today != null)
         {
@@ -599,7 +604,7 @@ public sealed partial class MainWindow : Window
                 label = L.T("الصلاة الحالية"); count = L.T("حان وقت الاذان"); unit = ""; color = Green; msg = true;
                 title = L.T("موعد صلاة ") + Times.Names[d.Idx]; tm = adhanTime; break;
             case Times.Phase.Iqama:
-                label = L.T("الإقامة"); count = Times.FmtMS(d.Left); unit = L.T("دقيقة : ثانية"); color = Amber;
+                label = L.T("الإقامة"); count = Times.FmtMinutes(d.Left); unit = L.T("دقيقة"); color = Amber;
                 title = L.T("باقي على إقامة صلاة ") + Times.Names[d.Idx]; break;
             case Times.Phase.IqamaNow:
                 label = L.T("الصلاة الحالية"); count = L.T("حان وقت الاقامة"); unit = ""; color = Green; msg = true;
@@ -647,6 +652,11 @@ public sealed partial class MainWindow : Window
         {
             if (part == "main") ShowFlyout(false);
             if (part == "widget") SetWidget(true);
+            if (part == "calculation")
+            {
+                Nav.SelectedItem = Nav.FooterMenuItems[0];
+                ShowFlyout(false);
+            }
             if (part == "settings")
             {
                 SetAccent(ParseHex("#C239B3"), false);   // CI preview: show a non-default accent
@@ -672,6 +682,7 @@ public sealed partial class MainWindow : Window
             }
             if (part == "update") { _toast = new UpdateToast("1.2.5", "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); }
         }
+        if (_pt == 3 && part == "calculation") CalculationCard.StartBringIntoView();
         if (_pt == 3 && part == "picker") AccentCustom_Click(this, new RoutedEventArgs());
         if (_pt == 2 && (part == "hover" || part == "hoverstress"))
         {
@@ -730,6 +741,7 @@ public sealed partial class MainWindow : Window
         FillLocationCombos();
         TglAdhan.IsOn = _s.NotifyAdhan;
         BuildIqamaAndSounds();
+        LoadCalculationUi();
         SyncCitySelection();
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
         TxtLon.Text = _s.Location.Lon.ToString("F4", CultureInfo.InvariantCulture);
@@ -796,7 +808,7 @@ public sealed partial class MainWindow : Window
         Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
         try { var v = typeof(App).Assembly.GetName().Version; if (v != null) TxtVersion.Text = L.T("الإصدار ") + v.Major + "." + v.Minor + "." + v.Build; } catch { }
         bool was = _loading; _loading = true;
-        FillLocationCombos(); SyncCitySelection();
+        FillLocationCombos(); SyncCitySelection(); LoadCalculationUi();
         PanelCalendar.Children.Clear(); PanelCalendar.Children.Add(new CalendarPage());
         PanelConvert.Children.Clear(); PanelConvert.Children.Add(new ConverterPage());
         PanelAzkar.Children.Clear(); PanelAzkar.Children.Add(new AzkarPage(_s, OnAzkarChanged));
@@ -823,6 +835,8 @@ public sealed partial class MainWindow : Window
 
     void LocationChanged()
     {
+        // Automatic choices follow each new location; explicit overrides stay unchanged.
+        LoadCalculationUi();
         _s.Save();
         SyncCitySelection();
         _ = ReloadAsync();
