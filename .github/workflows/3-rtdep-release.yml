@@ -34,7 +34,9 @@ jobs:
           gh release download $env:TAG -p '*portable*' -O portable.zip
           Expand-Archive portable.zip payload
           Compress-Archive -Path "payload/FluentPrayerTimes-v$ver/*" -DestinationPath installer/payload.zip
-          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o setup
-          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
-          Copy-Item setup/FluentPrayerTimes-Setup.exe $name
+          New-Item -ItemType Directory -Force publish | Out-Null
+          Copy-Item "payload/FluentPrayerTimes-v$ver/*" publish -Recurse
+          & "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "/DAppVersion=$ver" installer/RuntimeBootstrapper.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Native installer compilation failed' }
+          Copy-Item "out/$name" $name
           gh release upload $env:TAG $name
