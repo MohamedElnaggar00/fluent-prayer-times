@@ -46,6 +46,9 @@ public sealed partial class MainWindow : Window
     readonly TextBlock[] _rowTime = new TextBlock[6];
     readonly Border[] _rowBox = new Border[6];
     List<Times.Place> _places = new();
+    // The settings city dropdown follows the selected country.
+    readonly List<City> _cities = new();
+    string _cityCc = "";
     Times.Result? _res;
     DateTime _loadedDay = DateTime.MinValue;
     DateTime _lastTry = DateTime.MinValue;
@@ -766,8 +769,19 @@ public sealed partial class MainWindow : Window
         CmbCountry.Items.Clear(); CmbCity.Items.Clear();
         CmbCountry.Items.Add(L.T("كل دول العالم"));
         foreach (var c in Countries.All) CmbCountry.Items.Add(L.CountryName(c.Cc, c.Ar));
-        foreach (var c in Cities.All) CmbCity.Items.Add(L.T(c.Ar));
+        PopulateCities(string.IsNullOrEmpty(_s.Location.Cc) ? "EG" : _s.Location.Cc);
         _loading = was;
+    }
+
+    // Refill the city dropdown for one country: the full city list for Egypt, the capital for any other country.
+    void PopulateCities(string cc)
+    {
+        _cityCc = cc;
+        _cities.Clear();
+        if (cc == "EG") _cities.AddRange(Cities.All);
+        else foreach (var k in Countries.All) if (k.Cc == cc) { _cities.Add(new City(k.Capital, k.Capital, k.Lat, k.Lon)); break; }
+        CmbCity.Items.Clear();
+        foreach (var c in _cities) CmbCity.Items.Add(L.T(c.Ar));
     }
 
     void FillLangCombo()
@@ -829,7 +843,9 @@ public sealed partial class MainWindow : Window
     void SyncCitySelection()
     {
         bool was = _loading; _loading = true;
-        int i = _s.Location.UseCity ? Array.FindIndex(Cities.All, c => c.Name == _s.Location.Name) : -1;
+        string cc = string.IsNullOrEmpty(_s.Location.Cc) ? "EG" : _s.Location.Cc;
+        if (cc != _cityCc) PopulateCities(cc);
+        int i = _cities.FindIndex(c => c.Name == _s.Location.Name);
         CmbCity.SelectedIndex = i;
         int ci = Array.FindIndex(Countries.All, c => c.Cc == _s.Location.Cc);
         CmbCountry.SelectedIndex = ci < 0 ? 0 : ci + 1;
@@ -860,9 +876,10 @@ public sealed partial class MainWindow : Window
 
     void City_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || CmbCity.SelectedIndex < 0) return;
-        var c = Cities.All[CmbCity.SelectedIndex];
-        _s.Location = new Loc { Name = c.Name, NameAr = c.Ar, Lat = c.Lat, Lon = c.Lon, UseCity = true, CountryAr = "مصر", Cc = "EG" };
+        if (_loading || CmbCity.SelectedIndex < 0 || CmbCity.SelectedIndex >= _cities.Count) return;
+        var c = _cities[CmbCity.SelectedIndex];
+        string cname = _cityCc == "EG" ? "مصر" : (Array.Find(Countries.All, k => k.Cc == _cityCc)?.Ar ?? "");
+        _s.Location = new Loc { Name = c.Name, NameAr = c.Ar, Lat = c.Lat, Lon = c.Lon, UseCity = _cityCc == "EG", CountryAr = cname, Cc = _cityCc };
         LocationChanged();
     }
 
