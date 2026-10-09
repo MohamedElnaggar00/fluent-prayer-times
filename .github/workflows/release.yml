@@ -80,6 +80,12 @@ jobs:
           dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o setup
           Copy-Item setup/FluentPrayerTimes-Setup.exe "FluentPrayerTimes-v${{ steps.v.outputs.version }}-installer-win-x64.exe"
 
+      - name: Build native runtime-dependent installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "/DAppVersion=${{ steps.v.outputs.version }}" installer/RuntimeBootstrapper.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Native installer compilation failed' }
+          Copy-Item out/*.exe .
       - name: Verify installer and capture actual Windows UI
         shell: pwsh
         run: |
@@ -110,28 +116,13 @@ jobs:
         run: |
           VER="${{ steps.v.outputs.version }}"
           ZIP="FluentPrayerTimes-v$VER-portable-win-x64.zip"
-          cat > notes.md <<'NOTES'
-          ## Fluent Prayer Times (WinUI 3)
-
-          **المتطلبات:** Windows 10 1809+ / Windows 11 (x64) و **Windows App Runtime 1.6 (x64)**.
-          إذا لم يعمل البرنامج أو طلب بيئة التشغيل (runtime): نزّلها من https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe وثبّتها مرة واحدة.
-
-          Requires the Windows App Runtime 1.6 (x64): https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
-
-          **الجديد في 1.1.1:** مهلة التمرير الأصلية في Windows وحركة ظهور واختفاء تراعي إعدادات الحركة، ويدجت أكبر بنسبة 20%، ونسختا portable وinstaller.
-
-          **portable:** فك الضغط وشغّل البرنامج. يلزم .NET 8 وVisual C++ x64 وWindows App Runtime 1.6.
-          **installer:** مثبّت ذاتي التشغيل في Program Files، يفحص المتطلبات وينزّل الناقص من Microsoft بعد التحقق من التوقيع الرقمي. يلزم الإنترنت للمتطلبات الناقصة وصلاحيات المسؤول. يُضاف البرنامج إلى قائمة ابدأ وقائمة التطبيقات لإزالته.
-          الحركة تستخدم واجهات Win32 الأصلية؛ ليست نسخة مضمونة مطابقة لحركة Explorer الخاصة في Windows 11.
-
-          فُكّ الضغط وشغّل `FluentPrayerTimes.exe`، ثم ابحث عن أيقونة المئذنة في منطقة الإشعارات. البرنامج غير موقَّع: إذا ظهر SmartScreen فاضغط More info ثم Run anyway.
-          NOTES
-          sed -i 's/^          //' notes.md
+          test -f "release/CHANGELOG-$VER.md" || { echo 'Missing version changelog' >&2; exit 1; }
+          cp "release/CHANGELOG-$VER.md" notes.md
           if gh release view "v$VER" >/dev/null 2>&1; then
             DRAFT=$(gh release view "v$VER" --json isDraft --jq .isDraft)
             if [ "$DRAFT" != "true" ]; then echo "Published release exists; refusing replacement" >&2; exit 1; fi
-            gh release upload "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" --clobber
+            gh release upload "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" "FluentPrayerTimes-v$VER-installer-.NET-runtime-dependent-win-x64.exe" --clobber
             gh release edit "v$VER" --target "$(git rev-parse HEAD)" --notes-file notes.md
             exit 0
           fi
-          gh release create "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" --target "$(git rev-parse HEAD)" --title "v$VER" --notes-file notes.md --draft
+          gh release create "v$VER" "$ZIP" "FluentPrayerTimes-v$VER-installer-win-x64.exe" "FluentPrayerTimes-v$VER-installer-.NET-runtime-dependent-win-x64.exe" --target "$(git rev-parse HEAD)" --title "v$VER" --notes-file notes.md --draft
