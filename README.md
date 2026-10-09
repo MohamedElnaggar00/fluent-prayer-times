@@ -5,7 +5,7 @@
 
 برنامج خفيف لمواقيت الصلاة بتصميم Windows 11 الأصيل (WinUI 3)، يبقى في منطقة الإشعارات ويُذكّرك بالصلاة القادمة والإقامة. الواجهة بـ 11 لغة، وتتبع لغة Windows تلقائيًا.
 
-*brought to you by app.instinct AI* · تطوير: محمد النجار
+[*brought to you by Instinct*](https://instinct.com) · تطوير: محمد النجار
 
 ## لقطات الشاشة / Screenshots
 
@@ -104,4 +104,4 @@
 المواقيت من [Aladhan API](https://aladhan.com/prayer-times-api) بطريقة الهيئة المصرية العامة للمساحة (الطريقة 5) افتراضيًا.
 
 ## 📄 الترخيص
-[MIT](LICENSE) © محمد النجار · brought to you by app.instinct AI
+[MIT](LICENSE) © محمد النجار · [brought to you by Instinct](https://instinct.com)
