@@ -46,9 +46,9 @@ jobs:
             $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
             $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
           }
-          foreach ($it in 'en|main','en|settings','en|widget','en|update','ar|main','ar|settings','ar|widget') {
+          foreach ($it in 'en|main','en|settings','en|calculation','en|widget','en|hover','ar|calculation','ar|widget','ar|hover') {
             $lang,$part = $it.Split('|')
-            $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=next","--part=$part","--lang=$lang" -PassThru
+            $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=iqama","--part=$part","--lang=$lang" -PassThru
             Start-Sleep -Seconds 7
             Shot "$lang-$part"
             if ($part -eq 'hover') {
@@ -62,8 +62,30 @@ jobs:
           }
           $pl = Join-Path $env:APPDATA 'FluentPrayerTimes\preview.log'
           if (Test-Path $pl) { Get-Content $pl; Copy-Item $pl shots\preview.log }
+      - name: Build and verify installers (no release)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish/* -DestinationPath installer/payload.zip
+          dotnet publish installer/Installer.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o setup
+          if ($LASTEXITCODE -ne 0) { throw 'Installer publish failed' }
+          & "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" installer/RuntimeBootstrapper.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Native bootstrapper compile failed' }
+          $p = Start-Process setup/FluentPrayerTimes-Setup.exe -ArgumentList '--preview',"$PWD/shots/installer.png" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Installer preview failed' }
+          $native = (Get-ChildItem out/*.exe)[0].FullName
+          $p = Start-Process $native -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/LOG=$PWD/shots/native-install.log" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Native install test failed' }
+          $exe = Join-Path $env:ProgramFiles 'FluentPrayerTimes/FluentPrayerTimes.exe'
+          $p = Start-Process $exe -ArgumentList '--tray' -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw 'Installed app exited early' }
+          Stop-Process -Id $p.Id -Force
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ci-screenshots
-          path: shots/
+          path: |
+            shots/
+            publish/
+            setup/FluentPrayerTimes-Setup.exe
+            out/*.exe
