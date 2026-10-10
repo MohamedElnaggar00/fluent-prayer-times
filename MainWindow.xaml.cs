@@ -824,7 +824,7 @@ public sealed partial class MainWindow : Window
             SetWindowLongPtr(hw, -20, new IntPtr(ex));
         }
         catch { }
-        TitleStack.HorizontalAlignment = HorizontalAlignment.Left;
+        TitleStack.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
         TitleStack.Margin = L.Rtl ? new Thickness(0, 0, 14, 0) : new Thickness(14, 0, 0, 0);
         TitleStack.FlowDirection = fd;
         foreach (FrameworkElement el in new FrameworkElement[] { Nav, PanelTimes, PanelCalendar, PanelConvert, PanelAzkar, PanelSettings, PanelAbout, BtnAccentCustom, BtnAccentReset })
