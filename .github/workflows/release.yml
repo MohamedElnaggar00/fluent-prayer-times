@@ -108,6 +108,7 @@ jobs:
             installer-screen.png
             FluentPrayerTimes-v*-portable-win-x64.zip
             FluentPrayerTimes-v*-installer-win-x64.exe
+            FluentPrayerTimes-v*-installer-.NET-runtime-dependent-win-x64.exe
 
       - name: Create GitHub Release
         shell: bash
