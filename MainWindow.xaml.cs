@@ -824,7 +824,7 @@ public sealed partial class MainWindow : Window
             SetWindowLongPtr(hw, -20, new IntPtr(ex));
         }
         catch { }
-        TitleStack.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        TitleStack.HorizontalAlignment = HorizontalAlignment.Left;
         TitleStack.Margin = L.Rtl ? new Thickness(0, 0, 14, 0) : new Thickness(14, 0, 0, 0);
         TitleStack.FlowDirection = fd;
         foreach (FrameworkElement el in new FrameworkElement[] { Nav, PanelTimes, PanelCalendar, PanelConvert, PanelAzkar, PanelSettings, PanelAbout, BtnAccentCustom, BtnAccentReset })
@@ -1066,11 +1066,11 @@ public sealed partial class MainWindow : Window
         foreach (var button in new[] { BtnUpdate, BtnAboutUpdate }) {
             button.IsEnabled = !_checkingUpdates;
             button.Content = L.T("التحقق من التحديثات");
-            button.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            button.HorizontalAlignment = HorizontalAlignment.Left;
         }
         foreach (var link in new[] { UpdateLink, AboutUpdateLink }) {
             link.Content = L.T("فتح صفحة التنزيل");
-            link.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            link.HorizontalAlignment = HorizontalAlignment.Left;
             link.NavigateUri = _manualUpdateUrl == null ? null : new Uri(_manualUpdateUrl);
             link.Visibility = _manualUpdateUrl == null ? Visibility.Collapsed : Visibility.Visible;
         }
