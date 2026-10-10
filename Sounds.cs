@@ -40,6 +40,7 @@ static class Sounds
         {
             Stop();
             _p = new MediaPlayer { Source = MediaSource.CreateFromUri(new Uri(r.Value.path)) };
+            _p.CommandManager.IsEnabled = false;   // notification sound only: never register a system media-transport session
             _p.Play();
             if (r.Value.trim) _cut = new System.Threading.Timer(_ => Stop(), null, ShortSeconds * 1000, System.Threading.Timeout.Infinite);
             return true;
