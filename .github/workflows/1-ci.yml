@@ -46,7 +46,7 @@ jobs:
             $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
             $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
           }
-          foreach ($it in 'en|main','en|settings','en|calculation','en|widget','en|hover','ar|calculation','ar|widget','ar|hover') {
+          foreach ($it in 'en|main','en|settings','en|calculation','en|widget','en|hover','ar|calculation','ar|widget','ar|hover','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking') {
             $lang,$part = $it.Split('|')
             $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=iqama","--part=$part","--lang=$lang" -PassThru
             Start-Sleep -Seconds 7
