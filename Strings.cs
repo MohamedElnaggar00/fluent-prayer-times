@@ -2,6 +2,12 @@ namespace FluentPrayerTimes;
 
 static class Strings {
     public static readonly Dictionary<string, string[]> Table = new() {
+        ["الإصدار الحالي: "] = new[] { "Current version: " },
+        ["يتوفر الإصدار "] = new[] { "Version available: " },
+        ["أنت على أحدث إصدار"] = new[] { "You're up to date" },
+        ["فتح صفحة التنزيل"] = new[] { "Open download page" },
+        ["اضغط الزر للتحقق من التحديثات الآن."] = new[] { "Press the button to check for updates now." },
+        ["تعذر التحقق من التحديثات. تحقق من اتصالك بالإنترنت وحاول مرة أخرى."] = new[] { "Couldn't check for updates. Check your internet connection and try again." },
         ["المدن"] = new[] { "Cities" },
         ["طريقة حساب المواقيت"] = new[] { "Prayer time calculation" },
         ["تلقائي حسب الموقع"] = new[] { "Automatic for location" },

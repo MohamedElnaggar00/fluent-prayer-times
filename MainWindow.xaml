@@ -221,15 +221,17 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Border x:Name="UpdateSettingsCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="8" Padding="16">
-                            <StackPanel Spacing="10">
+                                CornerRadius="12" Padding="24">
+                            <StackPanel Spacing="8">
                                 <TextBlock Text="التحديثات" FontSize="16" FontWeight="SemiBold" />
                                 <ToggleSwitch x:Name="TglAutoUpdate" Header="البحث التلقائي عن التحديثات" OnContent="مفعّل" OffContent="متوقف" Toggled="AutoUpdate_Toggled" />
                                 <TextBlock Text="يفحص البرنامج أحدث إصدار مستقر على GitHub في الخلفية عند التشغيل ثم كل ست ساعات، ويعرض إشعارًا فيه زر تحميل مباشر عند توفر إصدار أحدث." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <Button x:Name="BtnUpdate" Content="التحقق من التحديثات" Click="Update_Click" HorizontalAlignment="Stretch" />
-                                <TextBlock x:Name="TxtUpdate" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock x:Name="TxtUpdateVersion" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button x:Name="BtnUpdate" Content="التحقق من التحديثات" Click="Update_Click" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="TxtUpdate" TextWrapping="Wrap" FontSize="13" />
+                                <HyperlinkButton x:Name="UpdateLink" Content="فتح صفحة التنزيل" Visibility="Collapsed" HorizontalAlignment="Left" />
                             </StackPanel>
                         </Border>
 
@@ -269,6 +271,18 @@
                                 <TextBlock Text="المطور: محمد النجار" FontSize="13" />
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            Text="المواقيت من Aladhan API وفق طريقة الحساب المختارة. البحث عن الأماكن من Open-Meteo. تُخزَّن الإعدادات والمواقيت محليًا في AppData، فيعمل البرنامج دون اتصال بالإنترنت." />
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="UpdateAboutCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="12" Padding="24" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="التحديثات" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="اضغط الزر للتحقق من التحديثات الآن." FontSize="13" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock x:Name="TxtAboutUpdateVersion" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button x:Name="BtnAboutUpdate" Content="التحقق من التحديثات" Click="Update_Click" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="TxtAboutUpdate" TextWrapping="Wrap" FontSize="13" />
+                                <HyperlinkButton x:Name="AboutUpdateLink" Content="فتح صفحة التنزيل" Visibility="Collapsed" HorizontalAlignment="Left" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

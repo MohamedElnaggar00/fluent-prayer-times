@@ -63,6 +63,7 @@ public sealed partial class MainWindow : Window
         ApplyAccentResources(ParseHex(_s.Accent));
         InitializeComponent();
         L.Register(RootGrid); ApplyFlow(); L.Refresh();
+        RefreshUpdateCards();
         if (App.Preview != null) _s.WidgetVisible = false;   // CI preview: never inherit a saved widget state
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
@@ -691,6 +692,15 @@ public sealed partial class MainWindow : Window
             }
             if (part == "update") { _toast = new UpdateToast("1.2.5", "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); }
         }
+        if (_pt == 1 && part.StartsWith("updates")) {
+            Nav.SelectedItem = Nav.FooterMenuItems[part.Contains("about") ? 1 : 0]; ShowFlyout(false);
+            _updateState = part.Contains("available") ? "available" : part.Contains("error") ? "error" : part.Contains("checking") ? "checking" : "current";
+            _checkingUpdates = _updateState == "checking";
+            _manualUpdateVersion = "v9.0.0";
+            _manualUpdateUrl = _updateState == "available" ? "https://github.com/" + UpdateRepo + "/releases/latest" : null;
+            RefreshUpdateCards();
+        }
+        if (_pt == 3 && part.StartsWith("updates")) (part.Contains("about") ? UpdateAboutCard : UpdateSettingsCard).StartBringIntoView();
         if (_pt == 3 && part == "calculation") CalculationCard.StartBringIntoView();
         if (_pt == 3 && part == "picker") AccentCustom_Click(this, new RoutedEventArgs());
         if (_pt == 2 && (part == "hover" || part == "hoverstress"))
@@ -824,7 +834,7 @@ public sealed partial class MainWindow : Window
     public void ApplyLanguage()
     {
         L.Set(_s.Lang);
-        ApplyFlow(); L.Refresh();
+        ApplyFlow(); L.Refresh(); RefreshUpdateCards();
         Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
         try { var v = typeof(App).Assembly.GetName().Version; if (v != null) TxtVersion.Text = L.T("الإصدار ") + v.Major + "." + v.Minor + "." + v.Build; } catch { }
         bool was = _loading; _loading = true;
@@ -1039,13 +1049,38 @@ public sealed partial class MainWindow : Window
 
     void Update_Click(object sender, RoutedEventArgs e) => _ = CheckForUpdatesAsync();
 
+    string _updateState = "idle";
+    string? _manualUpdateUrl, _manualUpdateVersion;
+    void RefreshUpdateCards()
+    {
+        string installed = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        TxtUpdateVersion.Text = TxtAboutUpdateVersion.Text = L.T("الإصدار الحالي: ") + "v" + installed;
+        string result = _updateState switch {
+            "checking" => L.T("جارٍ التحقق..."),
+            "available" => L.T("يتوفر الإصدار ") + _manualUpdateVersion + ".",
+            "current" => L.T("أنت على أحدث إصدار") + " (v" + installed + ").",
+            "error" => L.T("تعذر التحقق من التحديثات. تحقق من اتصالك بالإنترنت وحاول مرة أخرى."),
+            _ => ""
+        };
+        TxtUpdate.Text = TxtAboutUpdate.Text = result;
+        foreach (var button in new[] { BtnUpdate, BtnAboutUpdate }) {
+            button.IsEnabled = !_checkingUpdates;
+            button.Content = L.T("التحقق من التحديثات");
+            button.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        }
+        foreach (var link in new[] { UpdateLink, AboutUpdateLink }) {
+            link.Content = L.T("فتح صفحة التنزيل");
+            link.HorizontalAlignment = L.Rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            link.NavigateUri = _manualUpdateUrl == null ? null : new Uri(_manualUpdateUrl);
+            link.Visibility = _manualUpdateUrl == null ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+
     async Task CheckForUpdatesAsync()
     {
         if (_checkingUpdates) return;
         _checkingUpdates = true;
-        BtnUpdate.IsEnabled = false; BtnUpdate.Content = L.T("جارٍ التحقق...");
-        TxtUpdate.Text = "";
-        string message;
+        _updateState = "checking"; _manualUpdateUrl = null; RefreshUpdateCards();
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
@@ -1055,23 +1090,16 @@ public sealed partial class MainWindow : Window
             response.EnsureSuccessStatusCode();
             using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var installed = ReleaseVersion(typeof(MainWindow).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
-            var url = UpdateDownload(json.RootElement, installed);
-            if (url == null) message = L.T("أنت تستخدم أحدث إصدار.");
-            else
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-                message = L.T("تم فتح رابط تنزيل التحديث في المتصفح. بعد اكتمال التنزيل، شغّل المثبّت للتحديث.");
-            }
+            _manualUpdateUrl = UpdateDownload(json.RootElement, installed);
+            _manualUpdateVersion = json.RootElement.GetProperty("tag_name").GetString();
+            _updateState = _manualUpdateUrl == null ? "current" : "available";
         }
         catch (Exception error)
         {
             try { Directory.CreateDirectory(App.AppData); File.AppendAllText(Path.Combine(App.AppData, "update.log"), DateTime.Now + " " + error.Message + "\n"); } catch { }
-            message = L.T("تعذّر التحقق من التحديثات أو فتح التنزيل. تحقق من اتصال الإنترنت وحاول مجدداً.");
+            _updateState = "error";
         }
-        finally { _checkingUpdates = false; BtnUpdate.IsEnabled = true; BtnUpdate.Content = L.T("التحقق من التحديثات"); }
-        if (_quit) return;
-        TxtUpdate.Text = message;
-        try { await new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = L.T("التحقق من التحديثات"), Content = message, CloseButtonText = L.T("إغلاق"), FlowDirection = L.Flow }.ShowAsync(); } catch { }
+        finally { _checkingUpdates = false; if (!_quit) RefreshUpdateCards(); }
     }
 
     void Startup_Toggled(object sender, RoutedEventArgs e)

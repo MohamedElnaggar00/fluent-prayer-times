@@ -55,7 +55,7 @@ static class Program
         var about = new StackPanel { Margin = new Thickness(20), HorizontalAlignment = HorizontalAlignment.Center };
         about.Children.Add(new Border { Width = 104, Height = 104, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(0,103,192)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,14), Child = new Image { Width = 72, Height = 72, Source = new BitmapImage(new Uri("pack://application:,,,/logo.png")) } });
         about.Children.Add(Text("برنامج مواقيت الصلاة", 24));
-        about.Children.Add(Text("الإصدار 1.3.2", 14));
+        about.Children.Add(Text("الإصدار 1.3.3", 14));
         var credit = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run("brought to you by Instinct")) { NavigateUri = new Uri("https://instinct.com") };
         credit.RequestNavigate += (_, e) => { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); e.Handled = true; };
         var creditText = Text("", 14); creditText.Inlines.Add(credit); about.Children.Add(creditText);
@@ -165,7 +165,7 @@ static class Program
         string desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Product + ".lnk");
         Run("powershell.exe", "-NoProfile -NonInteractive -Command \"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + desktop.Replace("'", "''") + "');$s.TargetPath='" + escaped + "\\FluentPrayerTimes.exe';$s.WorkingDirectory='" + escaped + "';$s.IconLocation='" + escaped + "\\app.ico';$s.Save()\"");
         using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes");
-        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.3.2"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
+        key.SetValue("DisplayName", Product); key.SetValue("DisplayVersion", "1.3.3"); key.SetValue("Publisher", "Mohamed Elnaggar"); key.SetValue("InstallLocation", Target);
         key.SetValue("DisplayIcon", Path.Combine(Target, "app.ico")); key.SetValue("UninstallString", "\"" + Path.Combine(Target, "Uninstall.exe") + "\" --uninstall");
         key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
