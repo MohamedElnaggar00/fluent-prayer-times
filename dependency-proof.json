@@ -1,0 +1,18 @@
+[
+  {
+    "ModuleName": "hostfxr.dll",
+    "FileName": "D:\\a\\fluent-prayer-times\\fluent-prayer-times\\publish\\hostfxr.dll"
+  },
+  {
+    "ModuleName": "coreclr.dll",
+    "FileName": "D:\\a\\fluent-prayer-times\\fluent-prayer-times\\publish\\coreclr.dll"
+  },
+  {
+    "ModuleName": "Microsoft.WindowsAppRuntime.dll",
+    "FileName": "D:\\a\\fluent-prayer-times\\fluent-prayer-times\\publish\\Microsoft.WindowsAppRuntime.dll"
+  },
+  {
+    "ModuleName": "Microsoft.WinUI.dll",
+    "FileName": "D:\\a\\fluent-prayer-times\\fluent-prayer-times\\publish\\Microsoft.WinUI.dll"
+  }
+]
