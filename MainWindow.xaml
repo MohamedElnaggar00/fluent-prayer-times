@@ -181,8 +181,8 @@
                             <StackPanel Spacing="10">
                                 <TextBlock Text="طريقة حساب المواقيت" FontSize="16" FontWeight="SemiBold" />
                                 <StackPanel x:Name="CalculationControls" Spacing="8" />
-                                <TextBlock Text="التوقيت الصيفي" FontWeight="SemiBold" />
-                                <StackPanel Orientation="Vertical" Spacing="2">
+                                <TextBlock x:Name="DstTitle" Text="التوقيت الصيفي" FontWeight="SemiBold" />
+                                <StackPanel x:Name="DstPanel" Orientation="Vertical" Spacing="2">
                                     <RadioButton x:Name="RbDstAuto" GroupName="dst" Content="تلقائي" Tag="auto" Checked="Dst_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbDstOff" GroupName="dst" Content="إيقاف (UTC+2)" Tag="off" Checked="Dst_Checked" MinWidth="0" />
                                     <RadioButton x:Name="RbDstOn" GroupName="dst" Content="تشغيل (UTC+3)" Tag="on" Checked="Dst_Checked" MinWidth="0" />

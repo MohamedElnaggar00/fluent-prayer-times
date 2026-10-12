@@ -56,7 +56,8 @@ public sealed partial class MainWindow
             _s.TimeZoneOverride = name; Save();
         };
         CalculationControls.Children.Add(zone); CalculationControls.Children.Add(apply);
-        RbDstOff.IsEnabled = RbDstOn.IsEnabled = _s.Location.Cc == "EG" && string.IsNullOrEmpty(_s.TimeZoneOverride);
+        DstTitle.Visibility = DstPanel.Visibility = _s.DstApplies() ? Visibility.Visible : Visibility.Collapsed;
+        RbDstOff.IsEnabled = RbDstOn.IsEnabled = string.IsNullOrEmpty(_s.TimeZoneOverride);
         _loading = was;
     }
 }
