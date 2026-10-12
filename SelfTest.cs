@@ -53,6 +53,8 @@ static class SelfTest
             Check("older gives none", MainWindow.UpdateDownload(Rel(Rj("v1.0.0", false, false, "FluentPrayerTimes-v1.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("prerelease ignored", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, true, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("draft ignored", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", true, false, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
+            var eg = new Settings(); var us = new Settings { Location = new Loc { Cc = "US" }, Dst = "off" };
+            Check("DST card only for Egypt", eg.DstApplies() && !us.DstApplies() && us.TzParam == null);
             bool threw = false; try { MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "other.zip")), new Version(1, 1, 1)); } catch (InvalidOperationException) { threw = true; }
             Check("missing installer asset reports error", threw);
         }

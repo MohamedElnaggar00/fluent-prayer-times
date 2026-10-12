@@ -56,8 +56,9 @@ public class Settings {
     static string F => Path.Combine(Dir, "settings.json");
     public static Settings Load() { try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
     public void Save() { try { Directory.CreateDirectory(Dir); File.WriteAllText(F, JsonSerializer.Serialize(this)); } catch { } }
+    public bool DstApplies() => Location.Cc == "EG";   // the DST override only exists for Egypt
     // Timezone sent to Aladhan. auto = the API's own zone for the place (follows Egypt's DST rules)
-    public string? TzParam => !string.IsNullOrWhiteSpace(TimeZoneOverride) ? TimeZoneOverride : Location.Cc != "EG" ? null : Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
+    public string? TzParam => !string.IsNullOrWhiteSpace(TimeZoneOverride) ? TimeZoneOverride : !DstApplies() ? null : Dst switch { "off" => "Etc/GMT-2", "on" => "Etc/GMT-3", _ => null };
 }
 public record City(string Name, string Ar, double Lat, double Lon);
 public record Day(Dictionary<string, string> T, string Hijri, string? Tz = null, int Method = -1, int School = 0, int HighLatitude = 3);
