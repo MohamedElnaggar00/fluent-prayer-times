@@ -160,6 +160,7 @@ jobs:
               '}' + #13#10;
             SaveStringToFile(F, Script, False);
             Launched := ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + F + '"', '', SW_HIDE, ewWaitUntilTerminated, Rc);
+            Log('Migration script launched=' + IntToStr(Integer(Launched)) + ' rc=' + IntToStr(Rc) + ' legacyStill=' + IntToStr(Integer(LegacyPresent)) + ' file=' + IntToStr(Integer(FileExists(F))));
             if (not Launched) or LegacyPresent then
             begin
               Log('Older edition was NOT removed (administrator prompt declined or removal failed).');
