@@ -576,8 +576,8 @@ public sealed partial class MainWindow : Window
                 if (now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
                 {
                     _lastAdhan = key;
-                    bool custom = Sounds.Available("adhan", _s.AdhanSound);
-                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان الآن موعد أذان ") + Times.Names[i], custom); } catch { }
+                    bool none = _s.AdhanSound == "none"; bool custom = Sounds.Available("adhan", _s.AdhanSound);
+                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان الآن موعد أذان ") + Times.Names[i], custom || none); } catch { }
                     if (custom) Sounds.Play("adhan", _s.AdhanSound);
                 }
                 var iq = pt.AddMinutes(_s.IqamaFor(i));
@@ -585,8 +585,8 @@ public sealed partial class MainWindow : Window
                 if (now >= iq && (now - iq).TotalSeconds < 90 && ikey != _lastIqama)
                 {
                     _lastIqama = ikey;
-                    bool custom = Sounds.Available("iqama", _s.IqamaSound);
-                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان وقت إقامة صلاة ") + Times.Names[i], custom); } catch { }
+                    bool none = _s.IqamaSound == "none"; bool custom = Sounds.Available("iqama", _s.IqamaSound);
+                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان وقت إقامة صلاة ") + Times.Names[i], custom || none); } catch { }
                     if (custom) Sounds.Play("iqama", _s.IqamaSound);
                 }
             }
@@ -973,7 +973,7 @@ public sealed partial class MainWindow : Window
     }
 
     // ---------- iqama + sounds ----------
-    static readonly string[] SoundTags = { "default", "short", "full" };
+    static readonly string[] SoundTags = { "default", "short", "full", "none" };
     void BuildIqamaAndSounds()
     {
         PanelIqama.Children.Clear();
@@ -998,8 +998,8 @@ public sealed partial class MainWindow : Window
             PanelIqama.Children.Add(row);
         }
         PanelSounds.Children.Clear();
-        PanelSounds.Children.Add(SoundRow(L.T("صوت الأذان"), "adhan", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("أذان مختصر"), L.T("أذان كامل") }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }));
-        PanelSounds.Children.Add(SoundRow(L.T("صوت الإقامة"), "iqama", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("إقامة مختصرة"), L.T("إقامة كاملة") }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الأذان"), "adhan", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("أذان مختصر"), L.T("أذان كامل"), L.T("بدون صوت") }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الإقامة"), "iqama", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("إقامة مختصرة"), L.T("إقامة كاملة"), L.T("بدون صوت") }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }));
     }
 
     UIElement SoundRow(string title, string kind, string[] labels, string cur, Action<string> save)
@@ -1019,6 +1019,7 @@ public sealed partial class MainWindow : Window
         {
             var mode = SoundTags[Math.Max(0, cmb.SelectedIndex)];
             if (mode == "default") { note.Text = L.T("الصوت الافتراضي هو صوت إشعار ويندوز."); return; }
+            if (mode == "none") { note.Text = L.T("لن يُشغَّل أي صوت مع الإشعار."); return; }
             note.Text = Sounds.Play(kind, mode) ? "" : L.T("ملف الصوت غير موجود بعد في مجلد Audio.");
         };
         Grid.SetColumn(cmb, 0); Grid.SetColumn(test, 1);

@@ -44,8 +44,8 @@ public class Settings {
     public string TimeZoneOverride { get; set; } = "";
     public string Dst { get; set; } = "auto";           // auto | off | on
     public int[] IqamaMin { get; set; } = { 20, 0, 20, 20, 15, 20 };   // minutes from adhan to iqama, indexed like Times.Keys (sunrise unused)
-    public string AdhanSound { get; set; } = "default";  // default | short | full
-    public string IqamaSound { get; set; } = "default";  // default | short | full
+    public string AdhanSound { get; set; } = "default";  // default | short | full | none
+    public string IqamaSound { get; set; } = "default";  // default | short | full | none
     public int IqamaFor(int i)
     {
         var a = IqamaMin; int v = a != null && i >= 0 && i < a.Length ? a[i] : 0;

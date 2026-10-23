@@ -60,6 +60,11 @@ static class SelfTest
             Check("local calc 23 Oct matches Wathkkir", Row(new DateTime(2026, 10, 23), 3) == "05:42 07:09 12:46 15:57 18:23 19:41");
             Check("local calc 24 Oct", Row(new DateTime(2026, 10, 24), 3) == "05:42 07:10 12:46 15:57 18:22 19:40");
             Check("local calc 26 Oct", Row(new DateTime(2026, 10, 26), 3) == "05:44 07:11 12:46 15:55 18:20 19:38");
+            var ns = new Settings { AdhanSound = "none", IqamaSound = "none" };
+            var nr = JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(ns))!;
+            Check("no-sound choice persists", nr.AdhanSound == "none" && nr.IqamaSound == "none");
+            Check("no-sound plays no audio file", !Sounds.Available("adhan", "none") && !Sounds.Available("iqama", "none"));
+            Check("default sound setting unchanged", new Settings().AdhanSound == "default" && new Settings().IqamaSound == "default");
             Check("local calc unsupported method falls back", Row(new DateTime(2026, 10, 23), 3, 7) == "null");
             string RowX(DateTime dd, double la, double lo, int off, int method, int asr, int hl) { var rr = SolarCalc.Compute(dd, la, lo, off, method, null, null, asr, hl); return rr == null ? "null" : string.Join(" ", Times.Keys.Select(k => rr[k])); }
             Check("local calc Hanafi Asr (Cairo 23 Oct)", RowX(new DateTime(2026, 10, 23), 30.0444, 31.2357, 3, 5, 2, 3) == "05:35 07:02 12:39 16:39 18:17 19:35");
