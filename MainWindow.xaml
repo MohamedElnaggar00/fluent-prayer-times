@@ -69,7 +69,7 @@
                                                FlowDirection="LeftToRight" VerticalAlignment="Center"
                                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 </StackPanel>
-                                <TextBlock x:Name="TxtStatus" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock x:Name="TxtStatus" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                         </Border>
 
