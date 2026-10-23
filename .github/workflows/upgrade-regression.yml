@@ -6,12 +6,17 @@ on:
         description: 'Installer under test (default: current published v1.3.4 installer)'
         required: false
         default: 'https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.4/FluentPrayerTimes-v1.3.4-installer-win-x64.exe'
+      source_run_id:
+        description: 'Build and Release run id (publish=false) whose verified-downloads artifact holds the installer under test; overrides new_installer_url'
+        required: false
+        default: ''
       strict:
         description: 'Fail when more than one uninstall entry or install folder remains'
         type: boolean
         default: false
 permissions:
   contents: read
+  actions: read
 jobs:
   upgrade:
     runs-on: windows-2022
@@ -25,6 +30,9 @@ jobs:
           - name: runtime-dependent-1.3.2
             url: https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.2/FluentPrayerTimes-v1.3.2-installer-.NET-runtime-dependent-win-x64.exe
             args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-old.log'
+          - name: self-contained-1.3.4-published
+            url: https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.4/FluentPrayerTimes-v1.3.4-installer-win-x64.exe
+            args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
           - name: self-contained-1.3.3
             url: https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.3/FluentPrayerTimes-v1.3.3-installer-win-x64.exe
             args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
@@ -39,6 +47,14 @@ jobs:
           Dep 'https://aka.ms/vc14/vc_redist.x64.exe' '/install /quiet /norestart'
           Dep 'https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe' '--quiet'
           Get-ChildItem "$env:ProgramFiles\dotnet\shared\Microsoft.NETCore.App" | Select-Object -ExpandProperty Name
+      - name: Installer under test from a build artifact
+        if: inputs.source_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-downloads
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: under-test
       - name: Upgrade ${{ matrix.name }} to the installer under test
         shell: pwsh
         env:
@@ -78,7 +94,10 @@ jobs:
           New-Item -ItemType Directory -Force $settings | Out-Null
           Set-Content "$settings\regression-marker.txt" 'settings must survive'
           $before = Snap 'after OLD install'
-          Install $env:NEW_URL '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' "$env:RUNNER_TEMP\new.exe"
+          $newInstaller = "$env:RUNNER_TEMP\new.exe"
+          $built = Get-ChildItem under-test -Recurse -Filter '*installer-win-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($built) { Copy-Item $built.FullName $newInstaller; Write-Host "installer under test: $($built.Name)"; $p = Start-Process $newInstaller -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-new.log' -Wait -PassThru; Write-Host "new installer exit $($p.ExitCode)"; if ($p.ExitCode -ne 0) { Get-Content C:\inno-new.log -Tail 30; throw 'new installer failed' }; Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force }
+          else { Install $env:NEW_URL '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $newInstaller }
           $after = Snap 'after NEW install'
           $kept = Test-Path "$settings\regression-marker.txt"
           Write-Host "settings marker kept: $kept"

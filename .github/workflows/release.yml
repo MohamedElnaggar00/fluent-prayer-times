@@ -89,6 +89,8 @@ jobs:
           [Setup]
           AppId=FluentPrayerTimes-SelfContained
           AppName=Fluent Prayer Times
+          AppVerName=Fluent Prayer Times
+          UninstallDisplayName=Fluent Prayer Times
           AppVersion=${{ steps.version.outputs.value }}
           AppPublisher=Mohamed Elnaggar
           AppPublisherURL=https://instinct.com
@@ -116,6 +118,50 @@ jobs:
           Type: files; Name: "{autoprograms}\Fluent Prayer Times (Self-contained).lnk"
           [Run]
           Filename: "{app}\FluentPrayerTimes.exe"; Description: "Launch Fluent Prayer Times"; Flags: nowait postinstall skipifsilent
+          [Code]
+          function LegacyPresent: Boolean;
+          begin
+            Result := RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes_is1')
+              or RegKeyExists(HKLM32, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes_is1')
+              or RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes');
+          end;
+          // Removes the older machine-wide editions (runtime-dependent installer, first-generation installer) so only this one install remains.
+          // Only fixed, known locations are touched; no uninstall string from the registry is ever executed. User settings in AppData are not touched.
+          procedure MigrateLegacy;
+          var Script, Dir, F: String; Rc: Integer;
+          begin
+            if not LegacyPresent then exit;
+            Dir := ExpandConstant('{commonpf64}\FluentPrayerTimes');
+            F := ExpandConstant('{tmp}\fpt-migrate.ps1');
+            Script :=
+              '$ErrorActionPreference = "SilentlyContinue"' + #13#10 +
+              '$dir = "' + Dir + '"' + #13#10 +
+              '$u = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
+              'Get-Process FluentPrayerTimes | Stop-Process -Force' + #13#10 +
+              'if (((Test-Path "$u\FluentPrayerTimes_is1") -or (Test-Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes_is1")) -and (Test-Path "$dir\unins000.exe")) { Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait }' + #13#10 +
+              'if (Test-Path "$u\FluentPrayerTimes") {' + #13#10 +
+              '  if (Test-Path "$dir\FluentPrayerTimes.exe") { Remove-Item -LiteralPath $dir -Recurse -Force }' + #13#10 +
+              '  Remove-Item -LiteralPath "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Fluent Prayer Times.lnk" -Force' + #13#10 +
+              '  Remove-Item -LiteralPath "$env:PUBLIC\Desktop\Fluent Prayer Times.lnk" -Force' + #13#10 +
+              '  Remove-Item -LiteralPath "$u\FluentPrayerTimes" -Recurse -Force' + #13#10 +
+              '}' + #13#10;
+            SaveStringToFile(F, Script, False);
+            if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + F + '"', '', SW_HIDE, ewWaitUntilTerminated, Rc) then
+              Log('Legacy removal was declined or failed; older entry may remain.');
+          end;
+          // A startup entry written by an older edition points at the removed folder; point it at this install.
+          procedure FixStartup;
+          var V: String;
+          begin
+            if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'FluentPrayerTimes', V) then
+              if Pos(Lowercase(ExpandConstant('{commonpf64}\FluentPrayerTimes')), Lowercase(V)) > 0 then
+                RegWriteStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'FluentPrayerTimes', '"' + ExpandConstant('{app}\FluentPrayerTimes.exe') + '" --tray');
+          end;
+          procedure CurStepChanged(CurStep: TSetupStep);
+          begin
+            if CurStep = ssInstall then MigrateLegacy;
+            if CurStep = ssPostInstall then FixStartup;
+          end;
           [Messages]
           WelcomeLabel2=This edition includes .NET and Windows App Runtime. No runtime download or administrator rights are required.%n%nbrought to you by Instinct
           '@ | Set-Content self-contained.iss -Encoding utf8
