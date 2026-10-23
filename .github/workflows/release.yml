@@ -145,19 +145,19 @@ jobs:
               '$ErrorActionPreference = "Continue"' + #13#10 +
               'Start-Transcript -Path "' + ExpandConstant('{commonappdata}') + '\FluentPrayerTimes-migrate.log" | Out-Null' + #13#10 +
               '$dir = "' + Dir + '"' + #13#10 +
-              '$u = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
-              '$u32 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
-              'Write-Output ("dir=$dir is64=" + [Environment]::Is64BitProcess + " a=" + (Test-Path -LiteralPath "$u\FluentPrayerTimes") + " b=" + (Test-Path -LiteralPath "$u\FluentPrayerTimes_is1"))' + #13#10 +
-              'function Same($k) { $l = (Get-ItemProperty -LiteralPath $k).InstallLocation; Write-Output "key=$k loc=$l"; return ($l -and ($l.TrimEnd("\") -ieq $dir)) }' + #13#10 +
+              '$p = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
+              'function Hk($v) { [Microsoft.Win32.RegistryKey]::OpenBaseKey("LocalMachine", $v) }' + #13#10 +
+              'function Loc($v, $name) { $k = (Hk $v).OpenSubKey("$p\$name"); if (-not $k) { return $null }; $l = $k.GetValue("InstallLocation"); $k.Close(); return $l }' + #13#10 +
+              'function Same($v, $name) { $l = Loc $v $name; Write-Output "view=$v key=$name loc=$l"; return ($l -and ($l.TrimEnd("\") -ieq $dir)) }' + #13#10 +
               'try { $e = [Threading.EventWaitHandle]::OpenExisting("FluentPrayerTimes.Quit"); [void]$e.Set() } catch {}' + #13#10 +
-              '$d = (Get-Date).AddSeconds(8); while ((Get-Process FluentPrayerTimes) -and ((Get-Date) -lt $d)) { Start-Sleep -Milliseconds 200 }' + #13#10 +
-              'Get-Process FluentPrayerTimes | Stop-Process -Force' + #13#10 +
-              'foreach ($k in "$u\FluentPrayerTimes_is1", "$u32\FluentPrayerTimes_is1") { if ((Test-Path -LiteralPath $k) -and (Same $k) -and (Test-Path "$dir\unins000.exe") -and (Test-Path "$dir\FluentPrayerTimes.exe")) { Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait; break } }' + #13#10 +
-              'if ((Test-Path -LiteralPath "$u\FluentPrayerTimes") -and (Same "$u\FluentPrayerTimes")) {' + #13#10 +
+              '$d = (Get-Date).AddSeconds(8); while ((Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue) -and ((Get-Date) -lt $d)) { Start-Sleep -Milliseconds 200 }' + #13#10 +
+              'Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force' + #13#10 +
+              'foreach ($v in "Registry64", "Registry32") { if ((Same $v "FluentPrayerTimes_is1") -and (Test-Path "$dir\unins000.exe") -and (Test-Path "$dir\FluentPrayerTimes.exe")) { Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait; break } }' + #13#10 +
+              'if (Same "Registry64" "FluentPrayerTimes") {' + #13#10 +
               '  if ((Test-Path "$dir\Uninstall.exe") -and (Test-Path "$dir\FluentPrayerTimes.exe")) { Remove-Item -LiteralPath $dir -Recurse -Force }' + #13#10 +
-              '  Remove-Item -LiteralPath "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Fluent Prayer Times.lnk" -Force' + #13#10 +
-              '  Remove-Item -LiteralPath "$env:PUBLIC\Desktop\Fluent Prayer Times.lnk" -Force' + #13#10 +
-              '  Remove-Item -LiteralPath "$u\FluentPrayerTimes" -Recurse -Force' + #13#10 +
+              '  Remove-Item -LiteralPath "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Fluent Prayer Times.lnk" -Force -ErrorAction SilentlyContinue' + #13#10 +
+              '  Remove-Item -LiteralPath "$env:PUBLIC\Desktop\Fluent Prayer Times.lnk" -Force -ErrorAction SilentlyContinue' + #13#10 +
+              '  (Hk "Registry64").DeleteSubKeyTree("$p\FluentPrayerTimes", $false)' + #13#10 +
               '}' + #13#10;
             SaveStringToFile(F, Script, False);
             Launched := ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + F + '"', '', SW_HIDE, ewWaitUntilTerminated, Rc);
