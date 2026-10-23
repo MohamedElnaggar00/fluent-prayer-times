@@ -46,6 +46,8 @@ public class Settings {
     public int[] IqamaMin { get; set; } = { 20, 0, 20, 20, 15, 20 };   // minutes from adhan to iqama, indexed like Times.Keys (sunrise unused)
     public bool AdhanNotify { get; set; } = true;   // adhan notification on/off (independent of the iqama one)
     public bool IqamaNotify { get; set; } = true;   // iqama notification on/off
+    public bool AdhanOn => NotifyAdhan && AdhanNotify;   // the adhan notification fires only when the master switch and its own switch are on
+    public bool IqamaOn => NotifyAdhan && IqamaNotify;
     public bool LocationPending { get; set; } = false; // true only on a fresh install until the first automatic location lookup succeeds
     public string AdhanSound { get; set; } = "default";  // default | short | full | none
     public string IqamaSound { get; set; } = "default";  // default | short | full | none

@@ -124,6 +124,7 @@ public sealed partial class MainWindow : Window
         _timer.Tick += (s, e) => Tick();
         _timer.Start();
         _ = ReloadAsync();
+        if (_s.LocationPending) SyncCitySelection();
 
         if (_s.WidgetVisible) SetWidget(true);
         if (!startHidden) ShowFlyout(false);
@@ -505,9 +506,21 @@ public sealed partial class MainWindow : Window
     }
 
     int _reloadGeneration;
+    bool _locateFailed;
     async Task ReloadAsync()
     {
         int generation = ++_reloadGeneration;
+        if (_s.LocationPending)
+        {
+            // Fresh install, own location not known yet: never show the built-in default place as if it were the user's.
+            _res = new Times.Result(null, null, false);
+            TxtCity.Text = L.T("الموقع غير محدد");
+            TxtDates.Text = "";
+            TxtStatus.Text = _locateFailed ? L.T("تعذّر تحديد موقعك تلقائيًا. اختر دولتك ومدينتك من الإعدادات.") : L.T("جارٍ تحديد موقعك...");
+            _hl = -2;
+            Tick();
+            return;
+        }
         var snapshot = System.Text.Json.JsonSerializer.Deserialize<Settings>(System.Text.Json.JsonSerializer.Serialize(_s))!;
         _lastTry = DateTime.Now;
         Times.Result r;
@@ -556,7 +569,7 @@ public sealed partial class MainWindow : Window
         }
         var now = Times.Now(_s.Location.Tz);
         bool stale = _loadedDay != now.Date || _res?.Today == null;
-        if (stale && (now - _lastTry).TotalSeconds > (_res?.Today == null ? 300 : 5)) _ = ReloadAsync();
+        if (stale && !_s.LocationPending && (now - _lastTry).TotalSeconds > (_res?.Today == null ? 300 : 5)) _ = ReloadAsync();
 
         if (App.Preview != null) { PreviewTick(now); return; }
         if (_res?.Today == null)
@@ -574,7 +587,7 @@ public sealed partial class MainWindow : Window
                 if (i == 1) continue; // sunrise is not an adhan
                 var pt = Times.At(now, _res.Today.T[Times.Keys[i]]);
                 var key = now.ToString("yyyyMMdd") + "-" + i;
-                if (_s.AdhanNotify && now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
+                if (_s.AdhanOn && now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
                 {
                     _lastAdhan = key;
                     bool none = _s.AdhanSound == "none"; bool custom = Sounds.Available("adhan", _s.AdhanSound);
@@ -583,7 +596,7 @@ public sealed partial class MainWindow : Window
                 }
                 var iq = pt.AddMinutes(_s.IqamaFor(i));
                 var ikey = now.ToString("yyyyMMdd") + "-i" + i;
-                if (_s.IqamaNotify && now >= iq && (now - iq).TotalSeconds < 90 && ikey != _lastIqama)
+                if (_s.IqamaOn && now >= iq && (now - iq).TotalSeconds < 90 && ikey != _lastIqama)
                 {
                     _lastIqama = ikey;
                     bool none = _s.IqamaSound == "none"; bool custom = Sounds.Available("iqama", _s.IqamaSound);
@@ -870,6 +883,7 @@ public sealed partial class MainWindow : Window
         int ci = Array.FindIndex(Countries.All, c => c.Cc == _s.Location.Cc);
         CmbCountry.SelectedIndex = ci < 0 ? 0 : ci + 1;
         if (i < 0) CmbCity.PlaceholderText = L.T(_s.Location.NameAr);
+        if (_s.LocationPending) { CmbCity.SelectedIndex = -1; CmbCountry.SelectedIndex = -1; CmbCity.PlaceholderText = L.T("اختر مدينتك"); }
         TxtLat.Text = _s.Location.Lat.ToString("F4", CultureInfo.InvariantCulture);
         TxtLon.Text = _s.Location.Lon.ToString("F4", CultureInfo.InvariantCulture);
         _loading = was;
@@ -941,7 +955,17 @@ public sealed partial class MainWindow : Window
         try
         {
             var (p, how) = await Times.Detect();
-            if (p == null || !_s.LocationPending) return;   // offline or no fix: keep the default and try again next launch; a manual choice made meanwhile wins
+            if (!_s.LocationPending) return;   // a manual choice made meanwhile wins
+            if (p == null)
+            {
+                // No fix (offline, location blocked): say so and let the user choose; no prayer times are shown for a guessed place. Tried again next launch.
+                _locateFailed = true;
+                _loading = true; TxtDetect.Text = L.T("تعذّر تحديد الموقع"); _loading = false;
+                _ = ReloadAsync();
+                foreach (var it in Nav.MenuItems.Concat(Nav.FooterMenuItems).OfType<NavigationViewItem>())
+                    if ((it.Tag as string) == "settings") { Nav.SelectedItem = it; break; }
+                return;
+            }
             _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
             _loading = true; TxtDetect.Text = L.T("تم: ") + how; _loading = false;
             LocationChanged();

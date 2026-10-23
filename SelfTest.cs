@@ -91,6 +91,11 @@ static class SelfTest
             var ntr = JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(nt))!;
             Check("adhan and iqama notifications are independent", !ntr.AdhanNotify && ntr.IqamaNotify && new Settings().AdhanNotify && new Settings().IqamaNotify);
             Check("old settings.json keeps both notifications on and no location lookup", JsonSerializer.Deserialize<Settings>("{\"NotifyAdhan\":true}") is { AdhanNotify: true, IqamaNotify: true, LocationPending: false });
+            { var a = new Settings { AdhanNotify = false }; var b = new Settings { IqamaNotify = false }; var c = new Settings { NotifyAdhan = false }; var d = new Settings();
+              Check("scheduler gates: adhan off keeps iqama", !a.AdhanOn && a.IqamaOn);
+              Check("scheduler gates: iqama off keeps adhan", b.AdhanOn && !b.IqamaOn);
+              Check("scheduler gates: master off stops both", !c.AdhanOn && !c.IqamaOn);
+              Check("scheduler gates: defaults notify both", d.AdhanOn && d.IqamaOn); }
             Check("new Settings() does not ask for a location lookup by itself", !new Settings().LocationPending);
             Check("local calc unsupported method falls back", Row(new DateTime(2026, 10, 23), 3, 7) == "null");
             string RowX(DateTime dd, double la, double lo, int off, int method, int asr, int hl) { var rr = SolarCalc.Compute(dd, la, lo, off, method, null, null, asr, hl); return rr == null ? "null" : string.Join(" ", Times.Keys.Select(k => rr[k])); }
