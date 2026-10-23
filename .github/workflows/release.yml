@@ -142,12 +142,13 @@ jobs:
             Dir := ExpandConstant('{commonpf64}\FluentPrayerTimes');
             F := ExpandConstant('{tmp}\fpt-migrate.ps1');
             Script :=
-              '$ErrorActionPreference = "SilentlyContinue"' + #13#10 +
+              '$ErrorActionPreference = "Continue"' + #13#10 +
               'Start-Transcript -Path "' + ExpandConstant('{commonappdata}') + '\FluentPrayerTimes-migrate.log" | Out-Null' + #13#10 +
               '$dir = "' + Dir + '"' + #13#10 +
+              'Write-Output "dir=$dir"' + #13#10 +
               '$u = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
               '$u32 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
-              'function Same($k) { $l = (Get-ItemProperty -LiteralPath $k).InstallLocation; return ($l -and ($l.TrimEnd("\") -ieq $dir)) }' + #13#10 +
+              'function Same($k) { $l = (Get-ItemProperty -LiteralPath $k).InstallLocation; Write-Output "key=$k loc=$l"; return ($l -and ($l.TrimEnd("\") -ieq $dir)) }' + #13#10 +
               'try { $e = [Threading.EventWaitHandle]::OpenExisting("FluentPrayerTimes.Quit"); [void]$e.Set() } catch {}' + #13#10 +
               '$d = (Get-Date).AddSeconds(8); while ((Get-Process FluentPrayerTimes) -and ((Get-Date) -lt $d)) { Start-Sleep -Milliseconds 200 }' + #13#10 +
               'Get-Process FluentPrayerTimes | Stop-Process -Force' + #13#10 +
