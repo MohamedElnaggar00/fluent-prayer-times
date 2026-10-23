@@ -1,6 +1,7 @@
 name: Build clean-named downloads
 on:
   push:
+    branches: ['**']
     paths: ['.github/workflows/self-contained.yml']
   workflow_dispatch:
     inputs:

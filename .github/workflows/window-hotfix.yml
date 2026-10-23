@@ -1,6 +1,7 @@
 name: v1.1.2 window hotfix
 on:
   push:
+    branches: ['**']
     paths: ['.github/workflows/window-hotfix.yml']
   workflow_dispatch:
 permissions:

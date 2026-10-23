@@ -1,6 +1,7 @@
 name: Remove superseded current downloads
 on:
   push:
+    branches: ['**']
     paths: ['.github/workflows/current-asset-cleanup.yml']
 permissions:
   contents: write

@@ -1,6 +1,7 @@
 name: Runtime-dependent installer
 on:
   push:
+    branches: ['**']
     paths: ['.github/workflows/runtime-dependent.yml']
   workflow_dispatch:
 permissions:
