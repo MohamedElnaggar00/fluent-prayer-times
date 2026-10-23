@@ -80,7 +80,7 @@ jobs:
             $rows | Format-List | Out-String | Write-Host
             $dirs = @("$env:ProgramFiles\FluentPrayerTimes","$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained","$env:LOCALAPPDATA\Programs\FluentPrayerTimes") | Where-Object { Test-Path "$_\FluentPrayerTimes.exe" }
             Write-Host ("install folders with exe: " + ($dirs -join '; '))
-            return [pscustomobject]@{ Entries = @($rows).Count; Dirs = @($dirs).Count }
+            return [pscustomobject]@{ Entries = @($rows).Count; Dirs = @($dirs).Count; Names = (@($rows | ForEach-Object { $_.Name }) -join '|') }
           }
           function Install($url, $args_, $file) {
             Invoke-WebRequest $url -OutFile $file
@@ -93,15 +93,30 @@ jobs:
           $settings = "$env:APPDATA\FluentPrayerTimes"
           New-Item -ItemType Directory -Force $settings | Out-Null
           Set-Content "$settings\regression-marker.txt" 'settings must survive'
+          $oldExe = @("$env:ProgramFiles\FluentPrayerTimes\FluentPrayerTimes.exe","$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained\FluentPrayerTimes.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name FluentPrayerTimes -Value ('"' + $oldExe + '" --tray') -Force | Out-Null
+          $running = Start-Process $oldExe -ArgumentList '--tray' -PassThru
+          Start-Sleep -Seconds 8
+          Write-Host "old app running before upgrade: $(-not $running.HasExited)"
           $before = Snap 'after OLD install'
           $newInstaller = "$env:RUNNER_TEMP\new.exe"
           $built = Get-ChildItem under-test -Recurse -Filter '*installer-win-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($built) { Copy-Item $built.FullName $newInstaller; Write-Host "installer under test: $($built.Name)"; $p = Start-Process $newInstaller -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-new.log' -Wait -PassThru; Write-Host "new installer exit $($p.ExitCode)"; if ($p.ExitCode -ne 0) { Get-Content C:\inno-new.log -Tail 30; throw 'new installer failed' }; Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force }
           else { Install $env:NEW_URL '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $newInstaller }
           $after = Snap 'after NEW install'
+          $newExe = "$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained\FluentPrayerTimes.exe"
+          $runVal = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).FluentPrayerTimes
+          $startupOk = $runVal -and $runVal.ToLower().Contains($newExe.ToLower())
+          Write-Host "startup entry: $runVal -> ok=$startupOk"
+          $sh = New-Object -ComObject WScript.Shell
+          $lnkOk = $true
+          foreach ($l in @("$([Environment]::GetFolderPath('Desktop'))\Fluent Prayer Times.lnk","$([Environment]::GetFolderPath('Programs'))\Fluent Prayer Times.lnk")) { if (Test-Path $l) { $t = $sh.CreateShortcut($l).TargetPath; Write-Host "shortcut $l -> $t"; if ($t -ne $newExe) { $lnkOk = $false } } else { Write-Host "shortcut missing: $l"; $lnkOk = $false } }
+          $legacyLnk = (Test-Path "$env:PUBLIC\Desktop\Fluent Prayer Times.lnk") -or (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Fluent Prayer Times.lnk")
+          Write-Host "legacy common shortcuts remaining: $legacyLnk; old process still alive: $(-not $running.HasExited)"
+          $oneName = $after.Names -eq 'Fluent Prayer Times'
           $kept = Test-Path "$settings\regression-marker.txt"
           Write-Host "settings marker kept: $kept"
-          $line = "${{ matrix.name }}: old entries=$($before.Entries) folders=$($before.Dirs); after upgrade entries=$($after.Entries) folders=$($after.Dirs); settings kept=$kept"
+          $line = "${{ matrix.name }}: startup ok=$startupOk shortcuts ok=$lnkOk legacy shortcuts left=$legacyLnk plain name=$oneName; old entries=$($before.Entries) folders=$($before.Dirs); after upgrade entries=$($after.Entries) folders=$($after.Dirs); settings kept=$kept"
           Write-Host "RESULT $line"
           Add-Content $env:GITHUB_STEP_SUMMARY $line
-          if ($env:STRICT -eq 'true' -and ($after.Entries -ne 1 -or $after.Dirs -ne 1 -or -not $kept)) { throw "upgrade left duplicates or lost settings: $line" }
+          if ($env:STRICT -eq 'true' -and ($after.Entries -ne 1 -or $after.Dirs -ne 1 -or -not $kept -or -not $startupOk -or -not $lnkOk -or $legacyLnk -or -not $oneName)) { throw "upgrade left duplicates or lost settings: $line" }

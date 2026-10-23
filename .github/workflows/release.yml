@@ -128,7 +128,7 @@ jobs:
           // Removes the older machine-wide editions (runtime-dependent installer, first-generation installer) so only this one install remains.
           // Only fixed, known locations are touched; no uninstall string from the registry is ever executed. User settings in AppData are not touched.
           procedure MigrateLegacy;
-          var Script, Dir, F: String; Rc: Integer;
+          var Script, Dir, F: String; Rc: Integer; Launched: Boolean;
           begin
             if not LegacyPresent then exit;
             Dir := ExpandConstant('{commonpf64}\FluentPrayerTimes');
@@ -137,17 +137,28 @@ jobs:
               '$ErrorActionPreference = "SilentlyContinue"' + #13#10 +
               '$dir = "' + Dir + '"' + #13#10 +
               '$u = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
+              '$u32 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"' + #13#10 +
+              'function Same($k) { $l = (Get-ItemProperty -LiteralPath $k).InstallLocation; return ($l -and ($l.TrimEnd("\") -ieq $dir)) }' + #13#10 +
+              'try { $e = [Threading.EventWaitHandle]::OpenExisting("FluentPrayerTimes.Quit"); [void]$e.Set() } catch {}' + #13#10 +
+              '$d = (Get-Date).AddSeconds(8); while ((Get-Process FluentPrayerTimes) -and ((Get-Date) -lt $d)) { Start-Sleep -Milliseconds 200 }' + #13#10 +
               'Get-Process FluentPrayerTimes | Stop-Process -Force' + #13#10 +
-              'if (((Test-Path "$u\FluentPrayerTimes_is1") -or (Test-Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\FluentPrayerTimes_is1")) -and (Test-Path "$dir\unins000.exe")) { Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait }' + #13#10 +
-              'if (Test-Path "$u\FluentPrayerTimes") {' + #13#10 +
-              '  if (Test-Path "$dir\FluentPrayerTimes.exe") { Remove-Item -LiteralPath $dir -Recurse -Force }' + #13#10 +
+              'foreach ($k in "$u\FluentPrayerTimes_is1", "$u32\FluentPrayerTimes_is1") { if ((Test-Path -LiteralPath $k) -and (Same $k) -and (Test-Path "$dir\unins000.exe") -and (Test-Path "$dir\FluentPrayerTimes.exe")) { Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait; break } }' + #13#10 +
+              'if ((Test-Path -LiteralPath "$u\FluentPrayerTimes") -and (Same "$u\FluentPrayerTimes")) {' + #13#10 +
+              '  if ((Test-Path "$dir\Uninstall.exe") -and (Test-Path "$dir\FluentPrayerTimes.exe")) { Remove-Item -LiteralPath $dir -Recurse -Force }' + #13#10 +
               '  Remove-Item -LiteralPath "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Fluent Prayer Times.lnk" -Force' + #13#10 +
               '  Remove-Item -LiteralPath "$env:PUBLIC\Desktop\Fluent Prayer Times.lnk" -Force' + #13#10 +
               '  Remove-Item -LiteralPath "$u\FluentPrayerTimes" -Recurse -Force' + #13#10 +
               '}' + #13#10;
             SaveStringToFile(F, Script, False);
-            if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + F + '"', '', SW_HIDE, ewWaitUntilTerminated, Rc) then
-              Log('Legacy removal was declined or failed; older entry may remain.');
+            Launched := ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + F + '"', '', SW_HIDE, ewWaitUntilTerminated, Rc);
+            if (not Launched) or LegacyPresent then
+            begin
+              Log('Older edition was NOT removed (administrator prompt declined or removal failed).');
+              if not WizardSilent then
+                MsgBox('Fluent Prayer Times was installed, but an older installation could not be removed because administrator permission was declined or the removal failed. Both entries are still listed in Installed apps. Run this installer again and accept the administrator prompt to finish. Your settings are not affected.', mbInformation, MB_OK);
+            end
+            else
+              Log('Older edition removed.');
           end;
           // A startup entry written by an older edition points at the removed folder; point it at this install.
           procedure FixStartup;
