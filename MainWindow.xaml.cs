@@ -703,7 +703,7 @@ public sealed partial class MainWindow : Window
                 ExpAccent.IsExpanded = true;
                 ShowFlyout(false);
             }
-            if (part == "sounds")
+            if (part == "sounds" || part == "sounds-closed")
             {
                 Nav.SelectedItem = Nav.FooterMenuItems[0];
                 ShowFlyout(false);
@@ -738,7 +738,7 @@ public sealed partial class MainWindow : Window
         }
         if (_pt == 3 && part.StartsWith("updates")) (part.Contains("about") ? UpdateAboutCard : UpdateSettingsCard).StartBringIntoView();
         if (_pt == 3 && part == "calculation") CalculationCard.StartBringIntoView();
-        if (_pt == 3 && part == "sounds") PanelSounds.StartBringIntoView();
+        if (_pt == 3 && (part == "sounds" || part == "sounds-closed")) PanelSounds.StartBringIntoView();
         if (_pt == 4 && part == "sounds" && PanelSounds.Children.Count > 0 && PanelSounds.Children[0] is StackPanel sp && sp.Children.Count > 1 && sp.Children[1] is Grid sg && sg.Children[0] is ComboBox sc) sc.IsDropDownOpen = true;
         if (_pt == 3 && part == "picker") AccentCustom_Click(this, new RoutedEventArgs());
         if (_pt == 2 && (part == "hover" || part == "hoverstress"))
