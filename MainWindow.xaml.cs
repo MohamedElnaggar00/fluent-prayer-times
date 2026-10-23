@@ -65,6 +65,7 @@ public sealed partial class MainWindow : Window
         L.Register(RootGrid); ApplyFlow(); L.Refresh();
         RefreshUpdateCards();
         if (App.Preview != null) _s.WidgetVisible = false;   // CI preview: never inherit a saved widget state
+        if (App.Preview != null) { _s.LocationPending = App.PreviewPart?.StartsWith("nolocation") == true; _locateFailed = _s.LocationPending; }   // CI: previews use the default place except the "location not found" captures
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         Title = L.T("مواقيت الصلاة - Fluent Prayer Times");
         ExtendsContentIntoTitleBar = true;
@@ -125,6 +126,12 @@ public sealed partial class MainWindow : Window
         _timer.Start();
         _ = ReloadAsync();
         if (_s.LocationPending) SyncCitySelection();
+        if (App.Preview != null && _s.LocationPending)
+        {
+            var pt2 = DispatcherQueue.CreateTimer(); pt2.Interval = TimeSpan.FromSeconds(1.5); pt2.IsRepeating = false;
+            pt2.Tick += (s3, e3) => { if (App.PreviewPart == "nolocation-settings") Nav.SelectedItem = Nav.FooterMenuItems[0]; ShowFlyout(false); };
+            pt2.Start();
+        }
 
         if (_s.WidgetVisible) SetWidget(true);
         if (!startHidden) ShowFlyout(false);
@@ -571,7 +578,7 @@ public sealed partial class MainWindow : Window
         bool stale = _loadedDay != now.Date || _res?.Today == null;
         if (stale && !_s.LocationPending && (now - _lastTry).TotalSeconds > (_res?.Today == null ? 300 : 5)) _ = ReloadAsync();
 
-        if (App.Preview != null) { PreviewTick(now); return; }
+        if (App.Preview != null && !_s.LocationPending) { PreviewTick(now); return; }
         if (_res?.Today == null)
         {
             TxtNextLabel.Text = L.T("الصلاة القادمة");
