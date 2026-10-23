@@ -41,7 +41,16 @@ jobs:
           function Snap($label) {
             Write-Host "---- $label"
             $keys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
-            $rows = foreach ($k in $keys) { if (Test-Path $k) { Get-ChildItem $k | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like 'Fluent Prayer*' } | ForEach-Object { [pscustomobject]@{ Hive = $k.Substring(0,4); Key = $_.PSChildName; Name = $_.DisplayName; Version = $_.DisplayVersion; Location = $_.InstallLocation; Uninstall = $_.UninstallString } } }
+            $rows = @()
+            foreach ($k in $keys) {
+              if (-not (Test-Path $k)) { continue }
+              foreach ($item in Get-ChildItem $k) {
+                $props = Get-ItemProperty $item.PSPath
+                if ($props.DisplayName -like 'Fluent Prayer*') {
+                  $rows += [pscustomobject]@{ Hive = $k.Substring(0,4); Key = $item.PSChildName; Name = $props.DisplayName; Version = $props.DisplayVersion; Location = $props.InstallLocation; Uninstall = $props.UninstallString }
+                }
+              }
+            }
             $rows | Format-List | Out-String | Write-Host
             $dirs = @("$env:ProgramFiles\FluentPrayerTimes","$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained","$env:LOCALAPPDATA\Programs\FluentPrayerTimes") | Where-Object { Test-Path "$_\FluentPrayerTimes.exe" }
             Write-Host ("install folders with exe: " + ($dirs -join '; '))
