@@ -44,6 +44,9 @@ public class Settings {
     public string TimeZoneOverride { get; set; } = "";
     public string Dst { get; set; } = "auto";           // auto | off | on
     public int[] IqamaMin { get; set; } = { 20, 0, 20, 20, 15, 20 };   // minutes from adhan to iqama, indexed like Times.Keys (sunrise unused)
+    public bool AdhanNotify { get; set; } = true;   // adhan notification on/off (independent of the iqama one)
+    public bool IqamaNotify { get; set; } = true;   // iqama notification on/off
+    public bool LocationPending { get; set; } = false; // true only on a fresh install until the first automatic location lookup succeeds
     public string AdhanSound { get; set; } = "default";  // default | short | full | none
     public string IqamaSound { get; set; } = "default";  // default | short | full | none
     public int IqamaFor(int i)
@@ -54,7 +57,7 @@ public class Settings {
     }
     static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FluentPrayerTimes");
     static string F => Path.Combine(Dir, "settings.json");
-    public static Settings Load() { try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
+    public static Settings Load() { try { if (!File.Exists(F)) return new Settings { LocationPending = true }; return JsonSerializer.Deserialize<Settings>(File.ReadAllText(F)) ?? new(); } catch { return new(); } }
     public void Save() { try { Directory.CreateDirectory(Dir); File.WriteAllText(F, JsonSerializer.Serialize(this)); } catch { } }
     public bool DstApplies() => Location.Cc == "EG";   // the DST override only exists for Egypt
     // Timezone sent to Aladhan. auto = the API's own zone for the place (follows Egypt's DST rules)

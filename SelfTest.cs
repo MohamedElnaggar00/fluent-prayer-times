@@ -87,6 +87,11 @@ static class SelfTest
             Check("no-sound choice persists", nr.AdhanSound == "none" && nr.IqamaSound == "none");
             Check("no-sound plays no audio file", !Sounds.Available("adhan", "none") && !Sounds.Available("iqama", "none"));
             Check("default sound setting unchanged", new Settings().AdhanSound == "default" && new Settings().IqamaSound == "default");
+            var nt = new Settings { AdhanNotify = false };
+            var ntr = JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(nt))!;
+            Check("adhan and iqama notifications are independent", !ntr.AdhanNotify && ntr.IqamaNotify && new Settings().AdhanNotify && new Settings().IqamaNotify);
+            Check("old settings.json keeps both notifications on and no location lookup", JsonSerializer.Deserialize<Settings>("{\"NotifyAdhan\":true}") is { AdhanNotify: true, IqamaNotify: true, LocationPending: false });
+            Check("new Settings() does not ask for a location lookup by itself", !new Settings().LocationPending);
             Check("local calc unsupported method falls back", Row(new DateTime(2026, 10, 23), 3, 7) == "null");
             string RowX(DateTime dd, double la, double lo, int off, int method, int asr, int hl) { var rr = SolarCalc.Compute(dd, la, lo, off, method, null, null, asr, hl); return rr == null ? "null" : string.Join(" ", Times.Keys.Select(k => rr[k])); }
             Check("local calc Hanafi Asr (Cairo 23 Oct)", RowX(new DateTime(2026, 10, 23), 30.0444, 31.2357, 3, 5, 2, 3) == "05:35 07:02 12:39 16:39 18:17 19:35");

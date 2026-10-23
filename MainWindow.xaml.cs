@@ -98,6 +98,7 @@ public sealed partial class MainWindow : Window
         ApplyAppearance();
         Nav.SelectedItem = Nav.MenuItems[0];
         _loading = false;
+        if (_s.LocationPending && App.Preview == null) _ = AutoLocateFirstRun();
 
         _menu = new TrayMenuWindow(OnMenu);
         _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, TaskbarIsLight() ? "tray-dark.ico" : "tray-white.ico"),
@@ -573,7 +574,7 @@ public sealed partial class MainWindow : Window
                 if (i == 1) continue; // sunrise is not an adhan
                 var pt = Times.At(now, _res.Today.T[Times.Keys[i]]);
                 var key = now.ToString("yyyyMMdd") + "-" + i;
-                if (now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
+                if (_s.AdhanNotify && now >= pt && (now - pt).TotalSeconds < 90 && key != _lastAdhan)
                 {
                     _lastAdhan = key;
                     bool none = _s.AdhanSound == "none"; bool custom = Sounds.Available("adhan", _s.AdhanSound);
@@ -582,7 +583,7 @@ public sealed partial class MainWindow : Window
                 }
                 var iq = pt.AddMinutes(_s.IqamaFor(i));
                 var ikey = now.ToString("yyyyMMdd") + "-i" + i;
-                if (now >= iq && (now - iq).TotalSeconds < 90 && ikey != _lastIqama)
+                if (_s.IqamaNotify && now >= iq && (now - iq).TotalSeconds < 90 && ikey != _lastIqama)
                 {
                     _lastIqama = ikey;
                     bool none = _s.IqamaSound == "none"; bool custom = Sounds.Available("iqama", _s.IqamaSound);
@@ -877,6 +878,7 @@ public sealed partial class MainWindow : Window
     void LocationChanged()
     {
         // Automatic choices follow each new location; explicit overrides stay unchanged.
+        _s.LocationPending = false;   // any location choice (manual or automatic) ends the first-launch lookup
         LoadCalculationUi();
         _s.Save();
         SyncCitySelection();
@@ -931,6 +933,20 @@ public sealed partial class MainWindow : Window
         _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
         LstPlaces.Visibility = Visibility.Collapsed;
         LocationChanged();
+    }
+
+    // Fresh install only: find the user's own place once instead of staying on the built-in default. Saved locations are never touched.
+    async Task AutoLocateFirstRun()
+    {
+        try
+        {
+            var (p, how) = await Times.Detect();
+            if (p == null || !_s.LocationPending) return;   // offline or no fix: keep the default and try again next launch; a manual choice made meanwhile wins
+            _s.Location = new Loc { Name = p.Name, NameAr = p.Name, Lat = p.Lat, Lon = p.Lon, UseCity = false, CountryAr = p.Country, Cc = p.Cc };
+            _loading = true; TxtDetect.Text = L.T("تم: ") + how; _loading = false;
+            LocationChanged();
+        }
+        catch { }
     }
 
     async void Detect_Click(object sender, RoutedEventArgs e)
@@ -1007,14 +1023,21 @@ public sealed partial class MainWindow : Window
             PanelIqama.Children.Add(row);
         }
         PanelSounds.Children.Clear();
-        PanelSounds.Children.Add(SoundRow(L.T("صوت الأذان"), "adhan", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("أذان مختصر"), L.T("أذان كامل"), L.T("بدون صوت") }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }));
-        PanelSounds.Children.Add(SoundRow(L.T("صوت الإقامة"), "iqama", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("إقامة مختصرة"), L.T("إقامة كاملة"), L.T("بدون صوت") }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الأذان"), "adhan", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("أذان مختصر"), L.T("أذان كامل"), L.T("بدون صوت") }, _s.AdhanSound, v => { _s.AdhanSound = v; _s.Save(); }, _s.AdhanNotify, on => { _s.AdhanNotify = on; _s.Save(); }));
+        PanelSounds.Children.Add(SoundRow(L.T("صوت الإقامة"), "iqama", new[] { L.T("الافتراضي (صوت الإشعار)"), L.T("إقامة مختصرة"), L.T("إقامة كاملة"), L.T("بدون صوت") }, _s.IqamaSound, v => { _s.IqamaSound = v; _s.Save(); }, _s.IqamaNotify, on => { _s.IqamaNotify = on; _s.Save(); }));
     }
 
-    UIElement SoundRow(string title, string kind, string[] labels, string cur, Action<string> save)
+    UIElement SoundRow(string title, string kind, string[] labels, string cur, Action<string> save, bool on, Action<bool> saveOn)
     {
         var box = new StackPanel { Spacing = 6 };
-        box.Children.Add(new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var head = new Grid { ColumnSpacing = 8 };
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var ttl = new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        var tgl = new ToggleSwitch { IsOn = on, OnContent = L.T("مفعّل"), OffContent = L.T("متوقف"), MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(ttl, 0); Grid.SetColumn(tgl, 1);
+        head.Children.Add(ttl); head.Children.Add(tgl);
+        box.Children.Add(head);
         var line = new Grid { ColumnSpacing = 8 };
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1031,6 +1054,8 @@ public sealed partial class MainWindow : Window
             if (mode == "none") { note.Text = L.T("لن يُشغَّل أي صوت مع الإشعار."); return; }
             note.Text = Sounds.Play(kind, mode) ? "" : L.T("ملف الصوت غير موجود بعد في مجلد Audio.");
         };
+        tgl.Toggled += (s2, e2) => { if (_loading) return; saveOn(tgl.IsOn); cmb.IsEnabled = tgl.IsOn; test.IsEnabled = tgl.IsOn; };
+        cmb.IsEnabled = on; test.IsEnabled = on;
         Grid.SetColumn(cmb, 0); Grid.SetColumn(test, 1);
         line.Children.Add(cmb); line.Children.Add(test);
         box.Children.Add(line); box.Children.Add(note);
