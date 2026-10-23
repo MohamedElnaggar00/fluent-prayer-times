@@ -8,6 +8,8 @@ public partial class App : Application
     static Mutex? _mutex;
     /// <summary>CI-only: --preview=next|adhan|iqama|iqamanow and --part=main|widget|hover|hoverstress.</summary>
     public static string? Preview, PreviewPart, PreviewLang;
+    /// <summary>CI-only end-to-end hooks (all null in normal use): --e2e-detect=ok|fail replaces the location lookup result, --e2e-clock=adhan|iqama pins the scheduler clock to Dhuhr, --e2e-log=path records notifications instead of showing them, --e2e-set=Name=value;... overrides notification settings in memory.</summary>
+    public static string? E2EDetect, E2EClock, E2ELog, E2ESet;
     MainWindow? _window;
 
     public App()
@@ -26,6 +28,10 @@ public partial class App : Application
             if (a.StartsWith("--preview=")) Preview = a[10..];
             if (a.StartsWith("--part=")) PreviewPart = a[7..];
             if (a.StartsWith("--lang=")) PreviewLang = a[7..];
+            if (a.StartsWith("--e2e-detect=")) E2EDetect = a[13..];
+            if (a.StartsWith("--e2e-clock=")) E2EClock = a[12..];
+            if (a.StartsWith("--e2e-log=")) E2ELog = a[10..];
+            if (a.StartsWith("--e2e-set=")) E2ESet = a[10..];
         }
         if (Environment.GetCommandLineArgs().Any(a => a == "--selftest")) { SelfTest.Run(); return; }
         if (Environment.GetCommandLineArgs().Any(a => a == "--update-e2e")) { SelfTest.RunUpdateE2E(); return; }

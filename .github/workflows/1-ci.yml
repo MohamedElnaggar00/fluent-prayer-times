@@ -41,6 +41,52 @@ jobs:
           $log = Join-Path $env:APPDATA 'FluentPrayerTimes\update-e2e.log'
           if (Test-Path $log) { Get-Content $log }
           if ($p.ExitCode -ne 0) { throw "update e2e failed $($p.ExitCode)" }
+      - name: Runtime behaviour checks (first-run location, saved location, notification switches)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force shots | Out-Null
+          $dir = Join-Path $env:APPDATA 'FluentPrayerTimes'; $sf = Join-Path $dir 'settings.json'
+          $out = New-Object System.Collections.Generic.List[string]; $bad = New-Object System.Collections.Generic.List[string]
+          function Reset { Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2; Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $dir | Out-Null }
+          function Run($a, $sec) { $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList $a -PassThru; Start-Sleep $sec; Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; Start-Sleep 2 }
+          function Expect($name, $ok) { if ($ok) { $out.Add("PASS $name") } else { $out.Add("FAIL $name"); $bad.Add($name) } }
+          # 1. fresh install, automatic detection succeeds (lookup result injected, the app flow is real)
+          Reset; Run @('--e2e-detect=ok') 25
+          $j = if (Test-Path $sf) { Get-Content $sf -Raw | ConvertFrom-Json } else { $null }
+          Expect 'fresh install + detection ok: detected place saved, no longer pending' ($j -ne $null -and $j.Location.Name -eq 'E2E City' -and -not $j.LocationPending)
+          # 2. fresh install, detection fails: nothing guessed, stays pending
+          Reset; Run @('--e2e-detect=fail') 20
+          $j = if (Test-Path $sf) { Get-Content $sf -Raw | ConvertFrom-Json } else { $null }
+          Expect 'fresh install + detection fails: no location saved, still pending' ($j -eq $null -or ($j.LocationPending -eq $true -and $j.Location.Name -eq 'Alexandria'))
+          # 3. fresh install, real lookup (Windows location, then IP) on the runner: informational
+          Reset; Run @() 75
+          $out.Add('INFO real lookup on the runner: ' + $(if (Test-Path $sf) { (Get-Content $sf -Raw | ConvertFrom-Json | ForEach-Object { "name=$($_.Location.Name) lat=$($_.Location.Lat) pending=$($_.LocationPending)" }) } else { 'no settings saved (lookup failed, still pending)' }))
+          # 4. existing saved location is kept
+          Reset
+          '{"Location":{"Name":"Paris","NameAr":"Paris","Lat":48.8566,"Lon":2.3522,"UseCity":false,"CountryAr":"France","Cc":"FR","Tz":"Europe/Paris"}}' | Set-Content $sf
+          Run @('--e2e-detect=ok') 20
+          $j = Get-Content $sf -Raw | ConvertFrom-Json
+          Expect 'existing saved location (Paris) kept, no lookup' ($j.Location.Name -eq 'Paris' -and -not $j.LocationPending)
+          # 5. notification switches through the real scheduler with the clock pinned to Dhuhr adhan / iqama
+          $cases = @(
+            @('both on', 'AdhanNotify=true;IqamaNotify=true', $true, $true),
+            @('adhan off, iqama on', 'AdhanNotify=false;IqamaNotify=true', $false, $true),
+            @('adhan on, iqama off', 'AdhanNotify=true;IqamaNotify=false', $true, $false),
+            @('master off', 'NotifyAdhan=false;AdhanNotify=true;IqamaNotify=true', $false, $false))
+          foreach ($c in $cases) {
+            foreach ($clk in 'adhan','iqama') {
+              Reset; '{}' | Set-Content $sf
+              $log = Join-Path $env:RUNNER_TEMP "n-$($c[0] -replace ' |,','_')-$clk.txt"; Remove-Item $log -ErrorAction SilentlyContinue
+              Run @("--e2e-set=$($c[1])", "--e2e-clock=$clk", "--e2e-log=$log") 25
+              $txt = if (Test-Path $log) { Get-Content $log -Raw } else { '' }
+              $gotAdhan = $txt -match 'adhan\|'; $gotIqama = $txt -match 'iqama\|'
+              $wantAdhan = ($clk -eq 'adhan') -and $c[2]; $wantIqama = ($clk -eq 'iqama') -and $c[3]
+              Expect "notifications [$($c[0])] at $clk time: adhan=$wantAdhan iqama=$wantIqama" ($gotAdhan -eq $wantAdhan -and $gotIqama -eq $wantIqama)
+            }
+          }
+          Reset; Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+          $out | Tee-Object -FilePath shots/e2e-results.txt
+          if ($bad.Count -gt 0) { throw "runtime checks failed: $($bad -join '; ')" }
       - name: Captures
         shell: pwsh
         run: |

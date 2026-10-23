@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
 
     public MainWindow(bool startHidden)
     {
+        if (App.E2ESet != null) foreach (var kv in App.E2ESet.Split(';', StringSplitOptions.RemoveEmptyEntries)) { var q = kv.Split('=', 2); if (q.Length != 2) continue; bool v = q[1].Equals("true", StringComparison.OrdinalIgnoreCase); if (q[0] == "AdhanNotify") _s.AdhanNotify = v; else if (q[0] == "IqamaNotify") _s.IqamaNotify = v; else if (q[0] == "NotifyAdhan") _s.NotifyAdhan = v; }
         ApplyAccentResources(ParseHex(_s.Accent));
         InitializeComponent();
         L.Register(RootGrid); ApplyFlow(); L.Refresh();
@@ -567,6 +568,12 @@ public sealed partial class MainWindow : Window
         TxtStatus.Text = r.Today == null ? L.T("لا يوجد اتصال ولا مواقيت محفوظة") : (r.Offline ? L.T("دون اتصال - من آخر بيانات محفوظة") : "");
     }
 
+    void Notify2(string kind, string title, string body, bool silent)
+    {
+        if (App.E2ELog != null) { File.AppendAllText(App.E2ELog, kind + "|" + body + "\n"); return; }   // CI only: record instead of showing
+        _tray.Notify(title, body, silent);
+    }
+
     void Tick()
     {
         if (DateTime.Now >= _azkarNext)
@@ -578,6 +585,7 @@ public sealed partial class MainWindow : Window
         bool stale = _loadedDay != now.Date || _res?.Today == null;
         if (stale && !_s.LocationPending && (now - _lastTry).TotalSeconds > (_res?.Today == null ? 300 : 5)) _ = ReloadAsync();
 
+        if (App.E2EClock != null && _res?.Today != null) now = Times.At(now, _res.Today.T[Times.Keys[2]]).AddSeconds(5 + (App.E2EClock == "iqama" ? 60 * _s.IqamaFor(2) : 0));   // CI only: pin the clock just after the Dhuhr adhan or iqama
         if (App.Preview != null && !_s.LocationPending) { PreviewTick(now); return; }
         if (_res?.Today == null)
         {
@@ -598,7 +606,7 @@ public sealed partial class MainWindow : Window
                 {
                     _lastAdhan = key;
                     bool none = _s.AdhanSound == "none"; bool custom = Sounds.Available("adhan", _s.AdhanSound);
-                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان الآن موعد أذان ") + Times.Names[i], custom || none); } catch { }
+                    try { Notify2("adhan", L.T("مواقيت الصلاة"), L.T("حان الآن موعد أذان ") + Times.Names[i], custom || none); } catch { }
                     if (custom) Sounds.Play("adhan", _s.AdhanSound);
                 }
                 var iq = pt.AddMinutes(_s.IqamaFor(i));
@@ -607,7 +615,7 @@ public sealed partial class MainWindow : Window
                 {
                     _lastIqama = ikey;
                     bool none = _s.IqamaSound == "none"; bool custom = Sounds.Available("iqama", _s.IqamaSound);
-                    try { _tray.Notify(L.T("مواقيت الصلاة"), L.T("حان وقت إقامة صلاة ") + Times.Names[i], custom || none); } catch { }
+                    try { Notify2("iqama", L.T("مواقيت الصلاة"), L.T("حان وقت إقامة صلاة ") + Times.Names[i], custom || none); } catch { }
                     if (custom) Sounds.Play("iqama", _s.IqamaSound);
                 }
             }
@@ -961,7 +969,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var (p, how) = await Times.Detect();
+            (Times.Place? p, string how) = App.E2EDetect == "ok" ? ((Times.Place?)new Times.Place("E2E City", 40.7128, -74.0060, "E2E City", "United States", "US"), "e2e") : App.E2EDetect == "fail" ? ((Times.Place?)null, "") : await Times.Detect();
             if (!_s.LocationPending) return;   // a manual choice made meanwhile wins
             if (p == null)
             {
