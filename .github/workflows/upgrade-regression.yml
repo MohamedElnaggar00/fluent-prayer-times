@@ -24,11 +24,21 @@ jobs:
             args: '--verify-install'
           - name: runtime-dependent-1.3.2
             url: https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.2/FluentPrayerTimes-v1.3.2-installer-.NET-runtime-dependent-win-x64.exe
-            args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
+            args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-old.log'
           - name: self-contained-1.3.3
             url: https://github.com/MohamedElnaggar00/fluent-prayer-times/releases/download/v1.3.3/FluentPrayerTimes-v1.3.3-installer-win-x64.exe
             args: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
     steps:
+      - name: Prerequisites the older installers expect (.NET 8 desktop runtime, VC runtime, Windows App Runtime 1.6)
+        if: matrix.name != 'self-contained-1.3.3'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          function Dep($url, $a) { $f = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString() + '.exe'); Invoke-WebRequest $url -OutFile $f; $p = Start-Process $f -ArgumentList $a -Wait -PassThru; Write-Host "$url exit $($p.ExitCode)" }
+          Dep 'https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe' '/install /quiet /norestart'
+          Dep 'https://aka.ms/vc14/vc_redist.x64.exe' '/install /quiet /norestart'
+          Dep 'https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe' '--quiet'
+          Get-ChildItem "$env:ProgramFiles\dotnet\shared\Microsoft.NETCore.App" | Select-Object -ExpandProperty Name
       - name: Upgrade ${{ matrix.name }} to the installer under test
         shell: pwsh
         env:
@@ -60,7 +70,7 @@ jobs:
             Invoke-WebRequest $url -OutFile $file
             $p = Start-Process $file -ArgumentList $args_ -Wait -PassThru
             Write-Host "installer exit code $($p.ExitCode)"
-            if ($p.ExitCode -ne 0) { throw "installer failed $($p.ExitCode)" }
+            if ($p.ExitCode -ne 0) { if (Test-Path C:\inno-old.log) { Get-Content C:\inno-old.log -Tail 25 }; throw "installer failed $($p.ExitCode)" }
             Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force
           }
           Install $env:OLD_URL $env:OLD_ARGS "$env:RUNNER_TEMP\old.exe"
