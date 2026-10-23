@@ -10,6 +10,10 @@ on:
         description: 'Build and Release run id (publish=false) whose verified-downloads artifact holds the installer under test; overrides new_installer_url'
         required: false
         default: ''
+      future_run_id:
+        description: 'Build and Release run id (publish=false, version 1.3.5, CI-only) for the future-version upgrade test'
+        required: false
+        default: ''
       strict:
         description: 'Fail when more than one uninstall entry or install folder remains'
         type: boolean
@@ -120,3 +124,41 @@ jobs:
           Write-Host "RESULT $line"
           Add-Content $env:GITHUB_STEP_SUMMARY $line
           if ($env:STRICT -eq 'true' -and ($after.Entries -ne 1 -or $after.Dirs -ne 1 -or -not $kept -or -not $startupOk -or -not $lnkOk -or $legacyLnk -or -not $oneName)) { throw "upgrade left duplicates or lost settings: $line" }
+
+  future-version:
+    if: inputs.source_run_id != '' && inputs.future_run_id != ''
+    runs-on: windows-2022
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-downloads
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: v134
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-downloads
+          run-id: ${{ inputs.future_run_id }}
+          github-token: ${{ github.token }}
+          path: v135
+      - name: Install corrected 1.3.4, then a CI-only 1.3.5 over it
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $a = (Get-ChildItem v134 -Recurse -Filter '*installer-win-x64.exe' | Select-Object -First 1).FullName
+          $b = (Get-ChildItem v135 -Recurse -Filter '*installer-win-x64.exe' | Select-Object -First 1).FullName
+          Write-Host "A=$a"; Write-Host "B=$b"
+          $settings = "$env:APPDATA\FluentPrayerTimes"; New-Item -ItemType Directory -Force $settings | Out-Null
+          Set-Content "$settings\regression-marker.txt" 'settings must survive'
+          function Snap { $rows = foreach ($k in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall') { if (Test-Path $k) { Get-ChildItem $k | ForEach-Object { $p = Get-ItemProperty $_.PSPath; if ($p.DisplayName -like '*Fluent Prayer Times*') { [pscustomobject]@{ Key = $_.PSChildName; Name = $p.DisplayName; Version = $p.DisplayVersion; Loc = $p.InstallLocation } } } } }; $rows }
+          $p = Start-Process $a -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru; Write-Host "A exit $($p.ExitCode)"
+          Snap | Format-Table -AutoSize | Out-String | Write-Host
+          $exe = "$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained\FluentPrayerTimes.exe"
+          $run = Start-Process $exe -ArgumentList '--tray' -PassThru; Start-Sleep -Seconds 8
+          $p = Start-Process $b -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\inno-135.log' -Wait -PassThru; Write-Host "B exit $($p.ExitCode)"
+          $rows = @(Snap); $rows | Format-Table -AutoSize | Out-String | Write-Host
+          $dirs = @(Get-ChildItem "$env:LOCALAPPDATA\Programs","$env:ProgramFiles" -Directory -Filter 'FluentPrayerTimes*' -ErrorAction SilentlyContinue)
+          $kept = Test-Path "$settings\regression-marker.txt"
+          $ok = ($p.ExitCode -eq 0) -and ($rows.Count -eq 1) -and ($rows[0].Name -eq 'Fluent Prayer Times') -and ($rows[0].Version -eq '1.3.5') -and ($dirs.Count -eq 1) -and $kept
+          Write-Host "RESULT future-1.3.5: entries=$($rows.Count) name=$($rows[0].Name) version=$($rows[0].Version) folders=$($dirs.Count) settings kept=$kept ok=$ok"
+          if (-not $ok) { throw 'future-version upgrade failed' }
