@@ -55,6 +55,13 @@ static class SelfTest
             Check("draft ignored", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", true, false, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             var eg = new Settings(); var us = new Settings { Location = new Loc { Cc = "US" }, Dst = "off" };
             Check("DST card only for Egypt", eg.DstApplies() && !us.DstApplies() && us.TzParam == null);
+            // Local calculation: same numbers as Wathkkir for the same place (30.8619 N, 29.5845 E, Egyptian method, Cairo time +3 until 29 Oct).
+            string Row(DateTime dd, int off, int method = 5) { var rr = SolarCalc.Compute(dd, 30.8619, 29.5845, off, method, null, null, 1); return rr == null ? "null" : string.Join(" ", Times.Keys.Select(k => rr[k])); }
+            Check("local calc 23 Oct matches Wathkkir", Row(new DateTime(2026, 10, 23), 3) == "05:42 07:09 12:46 15:57 18:23 19:41");
+            Check("local calc 24 Oct", Row(new DateTime(2026, 10, 24), 3) == "05:42 07:10 12:46 15:57 18:22 19:40");
+            Check("local calc 26 Oct", Row(new DateTime(2026, 10, 26), 3) == "05:44 07:11 12:46 15:55 18:20 19:38");
+            Check("local calc unsupported method falls back", Row(new DateTime(2026, 10, 23), 3, 7) == "null");
+            Check("local calc high latitude falls back", SolarCalc.Compute(new DateTime(2026, 6, 21), 64.0, 10.0, 2, 3, null, null, 1) == null);
             bool threw = false; try { MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "other.zip")), new Version(1, 1, 1)); } catch (InvalidOperationException) { threw = true; }
             Check("missing installer asset reports error", threw);
         }

@@ -97,7 +97,7 @@ public static class Times {
         if (s.TzParam != null) q += "&timezonestring=" + Uri.EscapeDataString(s.TzParam);
         return q;
     }
-    public static string CacheKey(Settings s, DateTime d) => $"{s.Location.Key}|{s.Location.Cc}|{s.Location.Lat.ToString(CultureInfo.InvariantCulture)}|{s.Location.Lon.ToString(CultureInfo.InvariantCulture)}|{CalculationQuery(s)}|{s.CustomRule}|{s.FajrMinutes.ToString(CultureInfo.InvariantCulture)}|{s.IshaMinutes.ToString(CultureInfo.InvariantCulture)}|{d:yyyy-MM-dd}";
+    public static string CacheKey(Settings s, DateTime d) => $"{s.Location.Key}|{s.Location.Cc}|{s.Location.Lat.ToString(CultureInfo.InvariantCulture)}|{s.Location.Lon.ToString(CultureInfo.InvariantCulture)}|{CalculationQuery(s)}|{s.CustomRule}|{s.FajrMinutes.ToString(CultureInfo.InvariantCulture)}|{s.IshaMinutes.ToString(CultureInfo.InvariantCulture)}|local1|{d:yyyy-MM-dd}";
     static string CK(Settings s, DateTime d) => CacheKey(s, d);
 
     static Dictionary<string, Day> Read() {
@@ -131,7 +131,25 @@ public static class Times {
         int method = meta.GetProperty("method").TryGetProperty("id", out var id) ? id.GetInt32() : s.CalculationMethod;
         int school = meta.TryGetProperty("school", out var sc) && sc.GetString() == "HANAFI" ? 1 : 0;
         int high = meta.TryGetProperty("latitudeAdjustmentMethod", out var hl) ? hl.GetString() switch { "NONE" => 0, "MIDDLE_OF_THE_NIGHT" => 1, "ONE_SEVENTH" => 2, _ => 3 } : 3;
+        // Prayer times from the local calculator (seconds kept, one rounding rule); Aladhan's whole minutes stay as the fallback
+        // for methods or places the local calculator does not handle. Hijri date, method id and zone still come from Aladhan.
+        if (method != 99 || s.CustomRule == 0)
+        {
+            var off = OffsetHours(s, zone, d);
+            double? cf = method == 99 ? s.FajrAngle : null, ci = method == 99 ? s.IshaAngle : null;
+            var local = off == null ? null : SolarCalc.Compute(d, l.Lat, l.Lon, off.Value, method, cf, ci, school == 1 ? 2 : 1);
+            if (local != null) r = local;
+        }
         return new Day(r, hij, zone, method, school, high);
+    }
+    /// <summary>UTC offset in hours for the place on that date: the override/Etc zone if set, else the IANA zone Aladhan reported.</summary>
+    static double? OffsetHours(Settings s, string? zone, DateTime d)
+    {
+        var tz = s.TzParam ?? zone;
+        if (string.IsNullOrEmpty(tz)) return null;
+        var m = Regex.Match(tz, @"^Etc/GMT([+-])(\d{1,2})$");
+        if (m.Success) { int n = int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture); return m.Groups[1].Value == "-" ? n : -n; }
+        try { return TimeZoneInfo.FindSystemTimeZoneById(tz).GetUtcOffset(new DateTime(d.Year, d.Month, d.Day, 12, 0, 0)).TotalHours; } catch { return null; }
     }
     static async Task<Day> Get(Settings s, DateTime d, Dictionary<string, Day> cache) {
         var k = CK(s, d); if (cache.TryGetValue(k, out var c)) return c;
