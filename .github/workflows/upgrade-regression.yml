@@ -101,7 +101,7 @@ jobs:
           $before = Snap 'after OLD install'
           $newInstaller = "$env:RUNNER_TEMP\new.exe"
           $built = Get-ChildItem under-test -Recurse -Filter '*installer-win-x64.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($built) { Copy-Item $built.FullName $newInstaller; Write-Host "installer under test: $($built.Name)"; $p = Start-Process $newInstaller -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-new.log' -Wait -PassThru; Write-Host "new installer exit $($p.ExitCode)"; if ($p.ExitCode -ne 0) { Get-Content C:\inno-new.log -Tail 30; throw 'new installer failed' }; Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force }
+          if ($built) { Copy-Item $built.FullName $newInstaller; Write-Host "installer under test: $($built.Name)"; $p = Start-Process $newInstaller -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=C:\\inno-new.log' -Wait -PassThru; Write-Host "new installer exit $($p.ExitCode)"; if (Test-Path C:\ProgramData\FluentPrayerTimes-migrate.log) { Get-Content C:\ProgramData\FluentPrayerTimes-migrate.log | Select-Object -Last 25 }; Select-String -Path C:\inno-new.log -Pattern 'Older edition|runas|Running|Shutting|could not' | ForEach-Object { $_.Line }; if ($p.ExitCode -ne 0) { Get-Content C:\inno-new.log -Tail 30; throw 'new installer failed' }; Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force }
           else { Install $env:NEW_URL '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $newInstaller }
           $after = Snap 'after NEW install'
           $newExe = "$env:LOCALAPPDATA\Programs\FluentPrayerTimes-SelfContained\FluentPrayerTimes.exe"
