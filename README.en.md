@@ -87,7 +87,7 @@ The next prayer name, its time, and the countdown.
 - Run at Windows startup. Works offline after the first download of the times.
 
 **Updates and installation**
-- **Automatic update check** at launch and every six hours, with a notification that has a direct download button. It can be turned off in Settings. A manual check is available in Settings or from the tray menu.
+- **Automatic update check** at launch and every six hours, with a notification that downloads the installer inside the app, with a progress bar and a cancel button. Installation starts only after you press "Install now". It can be turned off in Settings. A manual check is available in Settings or from the tray menu.
 - **Small update download**: the update uses the small installer (no .NET bundled) instead of the full one.
 - **Modern installer**: an install button, a green progress bar, a done screen, automatic launch after install, and shortcuts on the desktop and in the Start menu.
 - The **About** page shows the actual app version, the app icon, and a **GitHub Repo Link** to the project repository.
