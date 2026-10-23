@@ -54,6 +54,22 @@ static class SelfTest
             Check("update found when GitHub reports canonical repo casing", MainWindow.UpdateDownload(Rel(Rc("v9.0.0", "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == "https://github.com/MohamedElnaggar00/Fluent-Prayer-Times/releases/download/v9.0.0/FluentPrayerTimes-v9.0.0-installer-win-x64.exe");
             bool foreign = false; try { MainWindow.UpdateDownload(Rel("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v9.0.0\",\"assets\":[{\"name\":\"FluentPrayerTimes-v9.0.0-installer-win-x64.exe\",\"browser_download_url\":\"https://github.com/someone-else/other/releases/download/v9.0.0/FluentPrayerTimes-v9.0.0-installer-win-x64.exe\"}]}"), new Version(1, 1, 1)); } catch (InvalidOperationException) { foreign = true; }
             Check("foreign repository download url is still rejected", foreign);
+            var withDigest = MainWindow.UpdateAssetFor(Rel("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v9.0.0\",\"assets\":[{\"name\":\"FluentPrayerTimes-v9.0.0-installer-win-x64.exe\",\"size\":1234,\"digest\":\"sha256:ABCDEF\",\"browser_download_url\":\"https://github.com/MohamedElnaggar00/Fluent-Prayer-Times/releases/download/v9.0.0/FluentPrayerTimes-v9.0.0-installer-win-x64.exe\"}]}"), new Version(1, 1, 1));
+            Check("update asset carries size and sha256 digest", withDigest != null && withDigest.Size == 1234 && withDigest.Sha256 == "ABCDEF");
+            Check("download host: github.com and its asset hosts only", UpdateInstaller.IsTrustedSource(new Uri("https://github.com/a/b")) && UpdateInstaller.IsTrustedSource(new Uri("https://release-assets.githubusercontent.com/x")) && !UpdateInstaller.IsTrustedSource(new Uri("https://evil.example/x")) && !UpdateInstaller.IsTrustedSource(new Uri("http://github.com/a")) && !UpdateInstaller.IsTrustedSource(new Uri("https://githubusercontent.com.evil.example/x")));
+            {
+                var tmp = Path.Combine(Path.GetTempPath(), "fpt-verify-" + Guid.NewGuid().ToString("N"));
+                var good = new byte[4096]; good[0] = (byte)'M'; good[1] = (byte)'Z'; File.WriteAllBytes(tmp, good);
+                var goodHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(good));
+                bool Fails(UpdateAsset a) { try { UpdateInstaller.Verify(tmp, a); return false; } catch (InvalidDataException) { return true; } }
+                UpdateInstaller.Verify(tmp, new UpdateAsset("u", "n.exe", 4096, goodHash.ToLowerInvariant()));
+                Check("installer verification accepts matching size and checksum", true);
+                Check("installer verification rejects wrong size", Fails(new UpdateAsset("u", "n.exe", 4097, null)));
+                Check("installer verification rejects wrong checksum", Fails(new UpdateAsset("u", "n.exe", 4096, new string('0', 64))));
+                var bad = (byte[])good.Clone(); bad[0] = 0; File.WriteAllBytes(tmp, bad);
+                Check("installer verification rejects non-executable file", Fails(new UpdateAsset("u", "n.exe", 4096, null)));
+                File.Delete(tmp);
+            }
             Check("same version gives none", MainWindow.UpdateDownload(Rel(Rj("v1.1.1", false, false, "FluentPrayerTimes-v1.1.1-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("older gives none", MainWindow.UpdateDownload(Rel(Rj("v1.0.0", false, false, "FluentPrayerTimes-v1.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);
             Check("prerelease ignored", MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, true, "FluentPrayerTimes-v9.0.0-installer-win-x64.exe")), new Version(1, 1, 1)) == null);

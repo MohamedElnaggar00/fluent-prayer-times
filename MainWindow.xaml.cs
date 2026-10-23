@@ -414,12 +414,12 @@ public sealed partial class MainWindow : Window
             response.EnsureSuccessStatusCode();
             using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var installed = ReleaseVersion(typeof(MainWindow).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
-            var url = UpdateDownload(json.RootElement, installed);
-            if (url == null || _quit) return;
+            var asset = UpdateAssetFor(json.RootElement, installed);
+            if (asset == null || _quit) return;
             var tag = (json.RootElement.GetProperty("tag_name").GetString() ?? "").TrimStart('v', 'V');
             if (_s.UpdateSeen == tag) return;   // each new version is announced once
             _s.UpdateSeen = tag; _s.Save();
-            _toast = new UpdateToast(tag, url, _s.Theme);
+            _toast = new UpdateToast(tag, asset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme);
             _toast.ShowToast();
         }
         catch (Exception error)
@@ -695,7 +695,7 @@ public sealed partial class MainWindow : Window
                 Nav.SelectedItem = Nav.FooterMenuItems[0];
                 ShowFlyout(false);
             }
-            if (part == "update") { _toast = new UpdateToast("1.2.5", "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); }
+            if (part.StartsWith("update") && !part.StartsWith("updates")) { _toast = new UpdateToast("1.2.5", PreviewAsset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); if (part != "update") _toast.PreviewState(part.Substring(7)); }
         }
         if (_pt == 1 && part.StartsWith("updates")) {
             Nav.SelectedItem = Nav.FooterMenuItems[part.Contains("about") ? 1 : 0]; ShowFlyout(false);
@@ -703,6 +703,7 @@ public sealed partial class MainWindow : Window
             _checkingUpdates = _updateState == "checking";
             _manualUpdateVersion = "v9.0.0";
             _manualUpdateUrl = _updateState == "available" ? "https://github.com/" + UpdateRepo + "/releases/latest" : null;
+            _manualUpdateAsset = _updateState == "available" ? PreviewAsset : null;
             RefreshUpdateCards();
         }
         if (_pt == 3 && part.StartsWith("updates")) (part.Contains("about") ? UpdateAboutCard : UpdateSettingsCard).StartBringIntoView();
@@ -1038,7 +1039,8 @@ public sealed partial class MainWindow : Window
     // ---------- updates (same mechanism as Fluent Vantage Toolbar) ----------
     const string UpdateRepo = "MohamedElnaggar00/fluent-prayer-times";
     static Version? ReleaseVersion(string? tag) => Version.TryParse(tag?.TrimStart('v', 'V'), out var v) ? v : null;
-    internal static string? UpdateDownload(System.Text.Json.JsonElement release, Version installed)
+    internal static string? UpdateDownload(System.Text.Json.JsonElement release, Version installed) => UpdateAssetFor(release, installed)?.Url;
+    internal static UpdateAsset? UpdateAssetFor(System.Text.Json.JsonElement release, Version installed)
     {
         if (release.GetProperty("draft").GetBoolean() || release.GetProperty("prerelease").GetBoolean()) return null;
         var next = ReleaseVersion(release.GetProperty("tag_name").GetString());
@@ -1050,7 +1052,13 @@ public sealed partial class MainWindow : Window
                 var name = asset.GetProperty("name").GetString();
                 if (name != $"FluentPrayerTimes-v{next.ToString(3)}-{suffix}") continue;
                 var url = asset.GetProperty("browser_download_url").GetString();
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/", StringComparison.OrdinalIgnoreCase)) return url;
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/", StringComparison.OrdinalIgnoreCase))
+                {
+                    long size = asset.TryGetProperty("size", out var sz) && sz.ValueKind == System.Text.Json.JsonValueKind.Number ? sz.GetInt64() : 0;
+                    string? sha = null;
+                    if (asset.TryGetProperty("digest", out var dg) && dg.ValueKind == System.Text.Json.JsonValueKind.String && (dg.GetString() ?? "").StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)) sha = dg.GetString()!.Substring(7);
+                    return new UpdateAsset(url!, name!, size, sha);
+                }
             }
         throw new InvalidOperationException("New release has no supported installer.");
     }
@@ -1059,6 +1067,16 @@ public sealed partial class MainWindow : Window
 
     string _updateState = "idle";
     string? _manualUpdateUrl, _manualUpdateVersion;
+    UpdateAsset? _manualUpdateAsset;
+    static readonly UpdateAsset PreviewAsset = new("https://github.com/" + UpdateRepo + "/releases/download/v9.0.0/FluentPrayerTimes-v9.0.0-installer-win-x64.exe", "FluentPrayerTimes-v9.0.0-installer-win-x64.exe", 0, null);
+    void UpdateInstall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_manualUpdateAsset == null) return;
+        try { _toast?.Close(); } catch { }
+        _toast = new UpdateToast((_manualUpdateVersion ?? "").TrimStart('v', 'V'), _manualUpdateAsset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme);
+        _toast.ShowToast();
+        _toast.Begin();
+    }
     void RefreshUpdateCards()
     {
         string installed = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
@@ -1076,6 +1094,11 @@ public sealed partial class MainWindow : Window
             button.Content = L.T("التحقق من التحديثات");
             button.HorizontalAlignment = HorizontalAlignment.Left;
         }
+        foreach (var install in new[] { BtnUpdateInstall, BtnAboutUpdateInstall }) {
+            install.Content = L.T("تنزيل وتثبيت");
+            install.HorizontalAlignment = HorizontalAlignment.Left;
+            install.Visibility = _manualUpdateAsset == null ? Visibility.Collapsed : Visibility.Visible;
+        }
         foreach (var link in new[] { UpdateLink, AboutUpdateLink }) {
             link.Content = L.T("فتح صفحة التنزيل");
             link.HorizontalAlignment = HorizontalAlignment.Left;
@@ -1088,7 +1111,7 @@ public sealed partial class MainWindow : Window
     {
         if (_checkingUpdates) return;
         _checkingUpdates = true;
-        _updateState = "checking"; _manualUpdateUrl = null; RefreshUpdateCards();
+        _updateState = "checking"; _manualUpdateUrl = null; _manualUpdateAsset = null; RefreshUpdateCards();
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
@@ -1098,7 +1121,8 @@ public sealed partial class MainWindow : Window
             response.EnsureSuccessStatusCode();
             using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var installed = ReleaseVersion(typeof(MainWindow).Assembly.GetName().Version?.ToString(3)) ?? new Version(0, 0, 0);
-            _manualUpdateUrl = UpdateDownload(json.RootElement, installed);
+            _manualUpdateAsset = UpdateAssetFor(json.RootElement, installed);
+            _manualUpdateUrl = _manualUpdateAsset?.Url;
             _manualUpdateVersion = json.RootElement.GetProperty("tag_name").GetString();
             _updateState = _manualUpdateUrl == null ? "current" : "available";
         }

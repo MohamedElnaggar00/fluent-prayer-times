@@ -2,6 +2,17 @@ namespace FluentPrayerTimes;
 
 static class Strings {
     public static readonly Dictionary<string, string[]> Table = new() {
+        ["تنزيل وتثبيت"] = new[] { "Download and install" },
+        ["جارٍ تنزيل التحديث"] = new[] { "Downloading update" },
+        ["إلغاء"] = new[] { "Cancel" },
+        ["تم التنزيل والتحقق من الملف"] = new[] { "Downloaded and verified" },
+        ["تثبيت الآن"] = new[] { "Install now" },
+        ["سيُغلق التطبيق ويكمل المثبّت التحديث."] = new[] { "The app will close and the installer will finish the update." },
+        ["تعذر تنزيل التحديث"] = new[] { "Couldn't download the update" },
+        ["إعادة المحاولة"] = new[] { "Try again" },
+        ["فتح في المتصفح"] = new[] { "Open in browser" },
+        ["لم يكتمل التنزيل. تحقق من اتصالك بالإنترنت وحاول مرة أخرى."] = new[] { "The download didn't finish. Check your internet connection and try again." },
+        ["فشل التحقق من الملف المنزّل. لم يتم تشغيل أي شيء."] = new[] { "The downloaded file failed verification. Nothing was run." },
         ["الإصدار الحالي: "] = new[] { "Current version: " },
         ["يتوفر الإصدار "] = new[] { "Version available: " },
         ["أنت على أحدث إصدار"] = new[] { "You're up to date" },
