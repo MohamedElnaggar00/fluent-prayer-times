@@ -5,6 +5,7 @@
 - Added a "No sound" choice to the adhan and iqama sound lists. Notifications are silent only when you choose it; your existing sound choices are unchanged.
 
 - Update notifications now download the installer inside the app, with a progress bar and a cancel button. The download is checked, and the installer runs only after you press "Install now".
+- The installer now upgrades an existing installation in place and removes duplicate older entries, so you no longer end up with several "Fluent Prayer Times" entries in Installed apps. Your settings are kept.
 
 ### Fixes
 - Fixed the update check not finding new releases.
