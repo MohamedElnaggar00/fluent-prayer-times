@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text.Json;
 namespace FluentPrayerTimes;
 
@@ -112,4 +113,44 @@ static class SelfTest
         try { Directory.CreateDirectory(App.AppData); File.WriteAllLines(Path.Combine(App.AppData, "selftest.log"), log); } catch { }
         Environment.Exit(fails == 0 ? 0 : 1);
     }
+
+    /// <summary>CI-only end-to-end check (--update-e2e): downloads the real published installer from GitHub through the app's own download code and checks progress, cancel, checksum failure and host rejection. Nothing is installed or launched.</summary>
+    public static void RunUpdateE2E()
+    {
+        var log = new List<string>(); int fails = 0;
+        void Check(string name, bool ok) { log.Add((ok ? "PASS " : "FAIL ") + name); if (!ok) fails++; }
+        try { Task.Run(async () =>
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("FluentPrayerTimes-ci");
+            var json = JsonDocument.Parse(await http.GetStringAsync("https://api.github.com/repos/MohamedElnaggar00/fluent-prayer-times/releases/latest"));
+            var asset = MainWindow.UpdateAssetFor(json.RootElement, new Version(1, 3, 3));
+            Check("live release offers an installer to 1.3.3", asset != null && asset.Sha256 != null && asset.Size > 1_000_000);
+            if (asset == null) return;
+            log.Add("asset " + asset.Name + " " + asset.Size + " bytes");
+            var steps = new List<double>();
+            var file = await UpdateInstaller.DownloadAsync(asset, p => steps.Add(p), CancellationToken.None);
+            Check("download finished and file exists", File.Exists(file) && new FileInfo(file).Length == asset.Size);
+            Check("progress reported and reached 100", steps.Count > 5 && steps[^1] >= 99.9 && steps.Zip(steps.Skip(1), (a, b) => b >= a).All(x => x));
+            Check("downloaded installer passes verification", Verifies(file, asset));
+            Check("no partial file left after success", !Directory.GetFiles(UpdateInstaller.Dir, "*.part").Any());
+            using var cts = new CancellationTokenSource();
+            bool canceled = false;
+            try { await UpdateInstaller.DownloadAsync(asset, p => { if (p > 3) cts.Cancel(); }, cts.Token); } catch (OperationCanceledException) { canceled = true; }
+            Check("cancel stops the download", canceled);
+            Check("cancel leaves no files behind", Directory.GetFiles(UpdateInstaller.Dir).Length == 0);
+            bool badHash = false;
+            try { await UpdateInstaller.DownloadAsync(asset with { Sha256 = new string('0', 64) }, _ => { }, CancellationToken.None); } catch (InvalidDataException) { badHash = true; }
+            Check("wrong checksum is rejected", badHash);
+            Check("rejected download leaves no installer behind", Directory.GetFiles(UpdateInstaller.Dir).Length == 0);
+            bool badHost = false;
+            try { await UpdateInstaller.DownloadAsync(asset with { Url = "https://example.com/" + asset.Name }, _ => { }, CancellationToken.None); } catch (InvalidOperationException) { badHost = true; }
+            Check("untrusted host is refused before any download", badHost);
+        }).GetAwaiter().GetResult(); }
+        catch (Exception ex) { log.Add("EXCEPTION " + ex); fails++; }
+        try { Directory.Delete(UpdateInstaller.Dir, true); } catch { }
+        try { Directory.CreateDirectory(App.AppData); File.WriteAllLines(Path.Combine(App.AppData, "update-e2e.log"), log); } catch { }
+        Environment.Exit(fails == 0 ? 0 : 1);
+    }
+    static bool Verifies(string file, UpdateAsset asset) { try { UpdateInstaller.Verify(file, asset); return true; } catch { return false; } }
 }

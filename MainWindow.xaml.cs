@@ -695,7 +695,8 @@ public sealed partial class MainWindow : Window
                 Nav.SelectedItem = Nav.FooterMenuItems[0];
                 ShowFlyout(false);
             }
-            if (part.StartsWith("update") && !part.StartsWith("updates")) { _toast = new UpdateToast("1.2.5", PreviewAsset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); if (part != "update") _toast.PreviewState(part.Substring(7)); }
+            if (part == "update-live") _ = LiveUpdatePreviewAsync();
+            else if (part.StartsWith("update") && !part.StartsWith("updates")) { _toast = new UpdateToast("1.2.5", PreviewAsset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme); _toast.ShowToast(); if (part != "update") _toast.PreviewState(part.Substring(7)); }
         }
         if (_pt == 1 && part.StartsWith("updates")) {
             Nav.SelectedItem = Nav.FooterMenuItems[part.Contains("about") ? 1 : 0]; ShowFlyout(false);
@@ -1069,6 +1070,22 @@ public sealed partial class MainWindow : Window
     string? _manualUpdateUrl, _manualUpdateVersion;
     UpdateAsset? _manualUpdateAsset;
     static readonly UpdateAsset PreviewAsset = new("https://github.com/" + UpdateRepo + "/releases/download/v9.0.0/FluentPrayerTimes-v9.0.0-installer-win-x64.exe", "FluentPrayerTimes-v9.0.0-installer-win-x64.exe", 0, null);
+    /// <summary>CI preview only: runs the real toast against the published release, so the download actually happens.</summary>
+    async Task LiveUpdatePreviewAsync()
+    {
+        try
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("FluentPrayerTimes-ci");
+            using var json = System.Text.Json.JsonDocument.Parse(await http.GetStringAsync("https://api.github.com/repos/" + UpdateRepo + "/releases/latest"));
+            var asset = UpdateAssetFor(json.RootElement, new Version(1, 3, 3));
+            if (asset == null) return;
+            _toast = new UpdateToast("1.3.4", asset, "https://github.com/" + UpdateRepo + "/releases/latest", _s.Theme);
+            _toast.ShowToast();
+            _toast.Begin();
+        }
+        catch { }
+    }
     void UpdateInstall_Click(object sender, RoutedEventArgs e)
     {
         if (_manualUpdateAsset == null) return;

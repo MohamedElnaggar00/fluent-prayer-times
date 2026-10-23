@@ -28,6 +28,7 @@ public partial class App : Application
             if (a.StartsWith("--lang=")) PreviewLang = a[7..];
         }
         if (Environment.GetCommandLineArgs().Any(a => a == "--selftest")) { SelfTest.Run(); return; }
+        if (Environment.GetCommandLineArgs().Any(a => a == "--update-e2e")) { SelfTest.RunUpdateE2E(); return; }
         L.Set(PreviewLang ?? Settings.Load().Lang);
         _mutex = new Mutex(true, "FluentPrayerTimes.SingleInstance", out bool created);
         if (!created) { Environment.Exit(0); return; }

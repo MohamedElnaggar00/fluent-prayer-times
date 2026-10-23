@@ -34,6 +34,13 @@ jobs:
           $log = Join-Path $env:APPDATA 'FluentPrayerTimes\selftest.log'
           if (Test-Path $log) { Get-Content $log | Select-Object -Last 5 }
           if ($p.ExitCode -ne 0) { throw "selftest failed $($p.ExitCode)" }
+      - name: Update download end-to-end (real release, nothing installed)
+        shell: pwsh
+        run: |
+          $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList '--update-e2e' -PassThru -Wait
+          $log = Join-Path $env:APPDATA 'FluentPrayerTimes\update-e2e.log'
+          if (Test-Path $log) { Get-Content $log }
+          if ($p.ExitCode -ne 0) { throw "update e2e failed $($p.ExitCode)" }
       - name: Captures
         shell: pwsh
         run: |
@@ -46,10 +53,11 @@ jobs:
             $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
             $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose()
           }
-          foreach ($it in 'en|main','en|settings','en|calculation','en|sounds','ar|sounds','en|widget','en|hover','ar|calculation','ar|widget','ar|hover','en|update','en|update-downloading','ar|update-downloading','en|update-ready','en|update-error','ar|update-error','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking') {
+          foreach ($it in 'en|main','en|settings','en|calculation','en|sounds','ar|sounds','en|widget','en|hover','ar|calculation','ar|widget','ar|hover','en|update','en|update-live','en|update-downloading','ar|update-downloading','en|update-ready','en|update-error','ar|update-error','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking','en|updates-about-current','ar|updates-about-current','en|updates-about-available','ar|updates-about-available','en|updates-settings-current','ar|updates-settings-current','en|updates-about-error','ar|updates-about-error','en|updates-about-checking','ar|updates-about-checking') {
             $lang,$part = $it.Split('|')
             $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList "--preview=iqama","--part=$part","--lang=$lang" -PassThru
             Start-Sleep -Seconds 7
+            if ($part -eq 'update-live') { Start-Sleep -Seconds 50 }
             Shot "$lang-$part"
             if ($part -eq 'hover') {
               Start-Process notepad.exe -WindowStyle Maximized
