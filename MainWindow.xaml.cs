@@ -1050,7 +1050,7 @@ public sealed partial class MainWindow : Window
                 var name = asset.GetProperty("name").GetString();
                 if (name != $"FluentPrayerTimes-v{next.ToString(3)}-{suffix}") continue;
                 var url = asset.GetProperty("browser_download_url").GetString();
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/")) return url;
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "github.com" && uri.AbsolutePath.StartsWith("/" + UpdateRepo + "/releases/download/", StringComparison.OrdinalIgnoreCase)) return url;
             }
         throw new InvalidOperationException("New release has no supported installer.");
     }
