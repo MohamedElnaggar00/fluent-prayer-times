@@ -61,7 +61,24 @@ static class SelfTest
             Check("local calc 24 Oct", Row(new DateTime(2026, 10, 24), 3) == "05:42 07:10 12:46 15:57 18:22 19:40");
             Check("local calc 26 Oct", Row(new DateTime(2026, 10, 26), 3) == "05:44 07:11 12:46 15:55 18:20 19:38");
             Check("local calc unsupported method falls back", Row(new DateTime(2026, 10, 23), 3, 7) == "null");
-            Check("local calc high latitude falls back", SolarCalc.Compute(new DateTime(2026, 6, 21), 64.0, 10.0, 2, 3, null, null, 1) == null);
+            string RowX(DateTime dd, double la, double lo, int off, int method, int asr, int hl) { var rr = SolarCalc.Compute(dd, la, lo, off, method, null, null, asr, hl); return rr == null ? "null" : string.Join(" ", Times.Keys.Select(k => rr[k])); }
+            Check("local calc Hanafi Asr (Cairo 23 Oct)", RowX(new DateTime(2026, 10, 23), 30.0444, 31.2357, 3, 5, 2, 3) == "05:35 07:02 12:39 16:39 18:17 19:35");
+            Check("local calc high latitude angle rule (Oslo 21 Jun)", RowX(new DateTime(2026, 6, 21), 59.9139, 10.7522, 2, 3, 1, 3) == "02:21 03:53 13:19 18:00 22:44 00:12");
+            Check("local calc high latitude middle of night", RowX(new DateTime(2026, 6, 21), 59.9139, 10.7522, 2, 3, 1, 1) == "01:19 03:53 13:19 18:00 22:44 01:19");
+            Check("local calc high latitude one seventh", RowX(new DateTime(2026, 6, 21), 59.9139, 10.7522, 2, 3, 1, 2) == "03:09 03:53 13:19 18:00 22:44 23:28");
+            Check("local calc no high-latitude rule falls back", RowX(new DateTime(2026, 6, 21), 59.9139, 10.7522, 2, 3, 1, 0) == "null");
+            Check("local calc polar day falls back", RowX(new DateTime(2026, 6, 21), 69.65, 18.96, 2, 3, 1, 3) == "null");
+            Check("local calc mid-latitude matches Aladhan (50N Dec)", RowX(new DateTime(2026, 12, 21), 50.0, 8.0, 1, 3, 1, 3) == "06:24 08:23 12:26 14:12 16:28 18:21");
+            var tzs = new Settings { Location = new Loc { Cc = "US" }, Dst = "off" };
+            Check("offset Cairo before DST starts (23 Apr)", Times.OffsetHours(tzs, "Africa/Cairo", new DateTime(2026, 4, 23)) == 2);
+            Check("offset Cairo after DST starts (24 Apr)", Times.OffsetHours(tzs, "Africa/Cairo", new DateTime(2026, 4, 24)) == 3);
+            Check("offset Cairo last DST day (29 Oct)", Times.OffsetHours(tzs, "Africa/Cairo", new DateTime(2026, 10, 29)) == 3);
+            Check("offset Cairo after DST ends (30 Oct)", Times.OffsetHours(tzs, "Africa/Cairo", new DateTime(2026, 10, 30)) == 2);
+            var mz = new Settings { TimeZoneOverride = "Etc/GMT-3" };
+            Check("manual UTC+3 overrides zone", Times.OffsetHours(mz, "Africa/Cairo", new DateTime(2026, 12, 1)) == 3);
+            mz.TimeZoneOverride = "Etc/GMT+5";
+            Check("manual UTC-5 offset", Times.OffsetHours(mz, null, new DateTime(2026, 12, 1)) == -5);
+            Check("DST transition changes local times by an hour", RowX(new DateTime(2026, 10, 30), 30.8619, 29.5845, 2, 5, 1, 3).StartsWith("04:") && RowX(new DateTime(2026, 10, 29), 30.8619, 29.5845, 3, 5, 1, 3).StartsWith("05:"));
             bool threw = false; try { MainWindow.UpdateDownload(Rel(Rj("v9.0.0", false, false, "other.zip")), new Version(1, 1, 1)); } catch (InvalidOperationException) { threw = true; }
             Check("missing installer asset reports error", threw);
         }

@@ -29,7 +29,7 @@ public static class SolarCalc
     /// <summary>Six prayer times as HH:mm in Keys order (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha), or null when the
     /// method or the sun geometry is not supported (the caller then uses Aladhan's values).</summary>
     public static Dictionary<string, string>? Compute(DateTime date, double lat, double lon, double utcOffsetHours,
-        int method, double? customFajr, double? customIsha, int asrFactor)
+        int method, double? customFajr, double? customIsha, int asrFactor, int highLat = 0)
     {
         double fajrAngle, ishaAngle;
         if (method == 99)
@@ -39,7 +39,7 @@ public static class SolarCalc
         }
         else if (Angles.TryGetValue(method, out var a)) { fajrAngle = a.Fajr; ishaAngle = a.Isha; }
         else return null;
-        if (Math.Abs(lat) > 48 || asrFactor < 1 || asrFactor > 2) return null;
+        if (asrFactor < 1 || asrFactor > 2) return null;
 
         int year = date.Year, month = date.Month, day = date.Day;
         double d = year * 367.0 - Math.Floor((year + Math.Floor((month + 9.0) / 12.0)) * 7.0 / 4.0)
@@ -63,10 +63,24 @@ public static class SolarCalc
             double c = (Math.Sin(Rad(alt)) - Math.Sin(Rad(lat)) * Math.Sin(Rad(decl))) / (Math.Cos(Rad(lat)) * Math.Cos(Rad(decl)));
             return c < -1 || c > 1 ? null : Deg(Math.Acos(c));
         }
-        var sunH = Below(0.833); var fajrH = Below(fajrAngle); var ishaH = Below(ishaAngle);
+        var sunH = Below(0.833);
         double asrAlt = Deg(Math.Atan(1.0 / (Math.Tan(Rad(Math.Abs(lat - decl))) + asrFactor)));
         var asrH = Above(asrAlt);
-        if (sunH == null || fajrH == null || ishaH == null || asrH == null) return null;
+        // Sunrise, sunset or Asr that never happens (polar day/night): no local value, keep Aladhan's.
+        if (sunH == null || asrH == null) return null;
+        var fajrH = Below(fajrAngle); var ishaH = Below(ishaAngle);
+        // Same rule as Wathkkir: the high-latitude rule applies only when the Fajr/Isha angle is never reached.
+        // highLat: 0 none, 1 middle of the night, 2 one seventh, 3 angle based (same numbering as the Windows setting).
+        double sunriseUtc = transit - sunH.Value / 15.0, maghribUtc = transit + sunH.Value / 15.0;
+        double nightHours = 24.0 - (maghribUtc - sunriseUtc);
+        double Portion(double ang) => highLat == 1 ? 0.5 : highLat == 2 ? 1.0 / 7.0 : ang / 60.0;
+        double fajrT, ishaT;
+        if (fajrH != null) fajrT = transit - fajrH.Value / 15.0;
+        else if (highLat > 0) fajrT = sunriseUtc - nightHours * Portion(fajrAngle);
+        else return null;
+        if (ishaH != null) ishaT = transit + ishaH.Value / 15.0;
+        else if (highLat > 0) ishaT = maghribUtc + nightHours * Portion(ishaAngle);
+        else return null;
 
         // Whole seconds of the day, truncated exactly like the Android hoursToMillis (hour, minute, then floor seconds).
         static int Secs(double h)
@@ -81,12 +95,12 @@ public static class SolarCalc
 
         return new Dictionary<string, string>
         {
-            ["Fajr"] = Near(Secs(transit - fajrH.Value / 15.0)),
-            ["Sunrise"] = Down(Secs(transit - sunH.Value / 15.0)),
+            ["Fajr"] = Near(Secs(fajrT)),
+            ["Sunrise"] = Down(Secs(sunriseUtc)),
             ["Dhuhr"] = Near(Secs(transit)),
             ["Asr"] = Near(Secs(asrH.Value / 15.0 + transit)),
-            ["Maghrib"] = Near(Secs(sunH.Value / 15.0 + transit)),
-            ["Isha"] = Near(Secs(ishaH.Value / 15.0 + transit)),
+            ["Maghrib"] = Near(Secs(maghribUtc)),
+            ["Isha"] = Near(Secs(ishaT)),
         };
     }
 }

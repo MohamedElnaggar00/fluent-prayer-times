@@ -137,13 +137,13 @@ public static class Times {
         {
             var off = OffsetHours(s, zone, d);
             double? cf = method == 99 ? s.FajrAngle : null, ci = method == 99 ? s.IshaAngle : null;
-            var local = off == null ? null : SolarCalc.Compute(d, l.Lat, l.Lon, off.Value, method, cf, ci, school == 1 ? 2 : 1);
+            var local = off == null ? null : SolarCalc.Compute(d, l.Lat, l.Lon, off.Value, method, cf, ci, school == 1 ? 2 : 1, high);
             if (local != null) r = local;
         }
         return new Day(r, hij, zone, method, school, high);
     }
     /// <summary>UTC offset in hours for the place on that date: the override/Etc zone if set, else the IANA zone Aladhan reported.</summary>
-    static double? OffsetHours(Settings s, string? zone, DateTime d)
+    internal static double? OffsetHours(Settings s, string? zone, DateTime d)
     {
         var tz = s.TzParam ?? zone;
         if (string.IsNullOrEmpty(tz)) return null;
