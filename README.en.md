@@ -101,7 +101,7 @@ A portable build (zip) and a small installer that needs the .NET 8 Desktop Runti
 **Requirements:** Windows 10 (1809 or later) / Windows 11, x64, and [Windows App Runtime 1.6](https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe) (installed once; the installer handles it when needed).
 
 ## 🕋 Prayer times source
-Times come from the [Aladhan API](https://aladhan.com/prayer-times-api), using the Egyptian General Authority of Survey method (method 5) by default.
+Times are calculated inside the app, with seconds, for angle-based methods (Egyptian General Authority of Survey, Muslim World League, Karachi, ISNA, Kuwait and custom angles). Prayers are then rounded to the nearest minute and sunrise is rounded down. Other methods, the Hijri date and the time zone come from the [Aladhan API](https://aladhan.com/prayer-times-api). The Egyptian General Authority of Survey method is the default in Egypt.
 
 ## 📄 License
 [MIT](LICENSE) © Mohamed Elnaggar · brought to you by app.instinct AI
