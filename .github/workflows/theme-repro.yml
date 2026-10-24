@@ -30,7 +30,7 @@ jobs:
           using System; using System.Runtime.InteropServices;
           public class B { [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, string l, uint f, uint t, out IntPtr r); }
           "@
-          function Broadcast { $r=[IntPtr]::Zero; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x1A, [IntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$r) | Out-Null }
+          function Broadcast { $r=[IntPtr]::Zero; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x31A, [IntPtr]::Zero, $null, 2, 5000, [ref]$r) | Out-Null; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x320, [IntPtr]::Zero, $null, 2, 5000, [ref]$r) | Out-Null; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x1A, [IntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$r) | Out-Null }
           function SetTheme($light) {
             $k='HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
             if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
@@ -41,14 +41,20 @@ jobs:
           New-Item -ItemType Directory -Force shots | Out-Null
           function Shot($name) { $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose() }
           $bad = @()
-          $modes = @(@('tray', @('--tray')), @('main', @('--preview=iqama','--part=main')), @('hover', @('--preview=iqama','--part=hover')), @('widget', @('--preview=iqama','--part=widget')))
+          $modes = @(
+            @('tray-widget-acrylic', @('--tray'), '{"WidgetVisible":true,"Backdrop":"acrylic","Accent":"#9FD89F"}'),
+            @('tray-widget-mica', @('--tray'), '{"WidgetVisible":true,"Backdrop":"mica","Theme":"system"}'),
+            @('tray-azkar-startup', @('--tray'), '{"WidgetVisible":true,"AzkarOn":true,"AzkarMinutes":1,"RunAtStartup":true,"Lang":"ar"}'),
+            @('hoverstress', @('--preview=iqama','--part=hoverstress'), '{}'),
+            @('main-default', @('--preview=iqama','--part=main'), '{}'),
+            @('tray-iqama-clock', @('--tray','--e2e-clock=iqama','--e2e-log=C:\\Windows\\Temp\\n.txt'), '{"WidgetVisible":true}'))
           foreach ($m in $modes) {
             $dir = Join-Path $env:APPDATA 'FluentPrayerTimes'
             Get-Process FluentPrayerTimes -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2
-            Remove-Item (Join-Path $dir 'crash.log') -ErrorAction SilentlyContinue
+            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $dir | Out-Null; $m[2] | Set-Content (Join-Path $dir 'settings.json')
             SetTheme 0
             $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList $m[1] -PassThru
-            Start-Sleep 12
+            Start-Sleep 15
             Shot "$($m[0])-dark-before"
             foreach ($t in 1,0,1,0) {
               SetTheme $t; Start-Sleep 4

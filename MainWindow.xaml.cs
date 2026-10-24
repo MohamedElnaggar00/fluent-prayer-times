@@ -103,9 +103,11 @@ public sealed partial class MainWindow : Window
         if (_s.LocationPending && App.Preview == null) _ = AutoLocateFirstRun();
 
         _menu = new TrayMenuWindow(OnMenu);
-        _tray = new TrayIcon(_hwnd, Path.Combine(AppContext.BaseDirectory, TaskbarIsLight() ? "tray-dark.ico" : "tray-white.ico"),
+        _tray = new TrayIcon(_hwnd, TrayIconPath(),
             new[] { (CmdOpen, L.T("فتح")), (CmdWidget, L.T("ويدجت سطح المكتب")), (CmdSettings, L.T("الإعدادات")), (CmdUpdate, L.T("التحقق من التحديثات")), (CmdExit, L.T("خروج")) },
             ToggleFlyout, OnMenu, OnContext);
+
+        _tray.OnSystemThemeChanged = () => _tray.SetIcon(TrayIconPath());
 
         _hover = new HoverWindow(() =>
         {
@@ -488,6 +490,8 @@ public sealed partial class MainWindow : Window
         page.Opacity = 0;
         sb.Children.Add(slide); sb.Children.Add(fade); sb.Begin();
     }
+
+    static string TrayIconPath() => Path.Combine(AppContext.BaseDirectory, TaskbarIsLight() ? "tray-dark.ico" : "tray-white.ico");
 
     static bool TaskbarIsLight()
     {
