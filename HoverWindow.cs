@@ -19,19 +19,23 @@ sealed class ActiveAcrylic : SystemBackdrop
         _c = new DesktopAcrylicController();
         var cfg = GetDefaultSystemBackdropConfiguration(target, xamlRoot);
         cfg.IsInputActive = true;
+        _cfg = cfg;
         _c.SetSystemBackdropConfiguration(cfg);
         _c.AddSystemBackdropTarget(target);
     }
-    /// <summary>The base class calls this when the Windows theme changes. Its default implementation throws for this custom backdrop and took the whole app down (WinUI ArgumentException "target"); the configuration object is already kept current, so the notification is absorbed here.</summary>
+    SystemBackdropConfiguration? _cfg;
+    /// <summary>The base class calls this when the Windows theme changes. Documented pattern for a custom backdrop: update the configuration's Theme here (following the window's own effective theme) instead of calling the base implementation, which throws ArgumentException "target" for this backdrop and used to take the whole app down.</summary>
     protected override void OnDefaultSystemBackdropConfigurationChanged(ICompositionSupportsSystemBackdrop target, XamlRoot xamlRoot)
     {
-        try { base.OnDefaultSystemBackdropConfigurationChanged(target, xamlRoot); } catch { }
+        if (_cfg == null) return;
+        var theme = (xamlRoot?.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default;
+        _cfg.Theme = theme switch { ElementTheme.Dark => SystemBackdropTheme.Dark, ElementTheme.Light => SystemBackdropTheme.Light, _ => SystemBackdropTheme.Default };
     }
     protected override void OnTargetDisconnected(ICompositionSupportsSystemBackdrop target)
     {
         base.OnTargetDisconnected(target);
         _c?.RemoveSystemBackdropTarget(target);
-        _c?.Dispose(); _c = null;
+        _c?.Dispose(); _c = null; _cfg = null;
     }
 }
 
