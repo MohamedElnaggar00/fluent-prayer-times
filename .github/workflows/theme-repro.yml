@@ -1,7 +1,5 @@
-name: Theme switch check
+name: Theme switch check (manual regression test)
 on:
-  push:
-    branches: [fix/tray-theme-crash]
   workflow_dispatch:
 permissions:
   contents: read
