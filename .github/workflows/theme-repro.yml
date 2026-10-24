@@ -28,7 +28,16 @@ jobs:
         run: |
           Add-Type @"
           using System; using System.Runtime.InteropServices;
-          public class B { [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, string l, uint f, uint t, out IntPtr r); }
+          public class B {
+            [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, string l, uint f, uint t, out IntPtr r);
+            [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+            [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+            delegate bool EP(IntPtr h, IntPtr l);
+            [DllImport("user32.dll")] static extern bool EnumWindows(EP cb, IntPtr l);
+            [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+            [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+            public static System.Collections.Generic.List<string> Wins(uint pid) { var r = new System.Collections.Generic.List<string>(); EnumWindows((h,l)=>{ uint p; GetWindowThreadProcessId(h,out p); if(p==pid){ var sb=new System.Text.StringBuilder(256); GetWindowText(h,sb,256); r.Add(h.ToInt64()+"|"+sb); } return true; }, IntPtr.Zero); return r; }
+          }
           "@
           function Broadcast { $r=[IntPtr]::Zero; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x31A, [IntPtr]::Zero, $null, 2, 5000, [ref]$r) | Out-Null; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x320, [IntPtr]::Zero, $null, 2, 5000, [ref]$r) | Out-Null; [B]::SendMessageTimeout([IntPtr]0xFFFF, 0x1A, [IntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$r) | Out-Null }
           function SetTheme($light) {
@@ -42,12 +51,13 @@ jobs:
           function Crop($name) { $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $w=420; $h=64; $bmp=New-Object System.Drawing.Bitmap $w,$h; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen(($b.Right-$w),($b.Bottom-$h),0,0,(New-Object System.Drawing.Size $w,$h)); $big=New-Object System.Drawing.Bitmap ($w*3),($h*3); $g2=[System.Drawing.Graphics]::FromImage($big); $g2.InterpolationMode='NearestNeighbor'; $g2.DrawImage($bmp,0,0,($w*3),($h*3)); $big.Save("tray-crops/$name.png"); $g.Dispose(); $g2.Dispose(); $bmp.Dispose(); $big.Dispose() }
           function Shot($name) { $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save("shots/$name.png"); $g.Dispose(); $bmp.Dispose() }
           $bad = @()
+          function MainHwnd($pid2) { foreach ($w in [B]::Wins([uint32]$pid2)) { $a=$w.Split('|',2); if ($a[1] -eq 'Fluent Prayer Times') { return [IntPtr][int64]$a[0] } }; return [IntPtr]::Zero }
           $modes = @(
             @('tray-widget-acrylic', @('--tray'), '{"WidgetVisible":true,"Backdrop":"acrylic","Accent":"#9FD89F"}'),
-            @('tray-widget-mica', @('--tray'), '{"WidgetVisible":true,"Backdrop":"mica","Theme":"system"}'),
-            @('tray-azkar-startup', @('--tray'), '{"WidgetVisible":true,"AzkarOn":true,"AzkarMinutes":1,"RunAtStartup":true,"Lang":"ar"}'),
-            @('hoverstress', @('--preview=iqama','--part=hoverstress'), '{}'),
-            @('main-default', @('--preview=iqama','--part=main'), '{}'),
+            @('tray-open-window', @('--tray'), '{}', 'open'),
+            @('tray-open-then-close', @('--tray'), '{"WidgetVisible":true}', 'openclose'),
+            @('tray-hover-card', @('--tray'), '{}', 'hover'),
+            @('tray-rightclick-menu', @('--tray'), '{}', 'menu'),
             @('tray-iqama-clock', @('--tray','--e2e-clock=iqama','--e2e-log=C:\\Windows\\Temp\\n.txt'), '{"WidgetVisible":true}'))
           foreach ($m in $modes) {
             $dir = Join-Path $env:APPDATA 'FluentPrayerTimes'
@@ -56,6 +66,14 @@ jobs:
             SetTheme 0
             $p = Start-Process publish\FluentPrayerTimes.exe -ArgumentList $m[1] -PassThru
             Start-Sleep 15
+            if ($m.Count -gt 3) {
+              $hw = MainHwnd $p.Id; "hwnd=$hw wins=" + ([B]::Wins([uint32]$p.Id) -join ';')
+              if ($m[3] -eq 'open' -or $m[3] -eq 'openclose') { [B]::PostMessage($hw, 0x8001, [IntPtr]::Zero, [IntPtr]0x0202) | Out-Null; Start-Sleep 4 }
+              if ($m[3] -eq 'openclose') { [B]::PostMessage($hw, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null; Start-Sleep 3 }
+              if ($m[3] -eq 'hover') { $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; [B]::SetCursorPos($b.Right-120,$b.Bottom-20) | Out-Null; 1..6 | ForEach-Object { [B]::PostMessage($hw, 0x8001, [IntPtr]::Zero, [IntPtr]0x0200) | Out-Null; Start-Sleep -Milliseconds 400 }; Start-Sleep 2 }
+              if ($m[3] -eq 'menu') { [B]::PostMessage($hw, 0x8001, [IntPtr]::Zero, [IntPtr]0x0205) | Out-Null; Start-Sleep 3 }
+              Shot "$($m[0])-pre-switch"
+            }
             Shot "$($m[0])-dark-before"; Crop "$($m[0])-dark"
             foreach ($t in 1,0,1,0) {
               SetTheme $t; Start-Sleep 4
@@ -76,3 +94,5 @@ jobs:
           path: |
             tray-crops/
             shots/crash-*.log
+            shots/event-*.txt
+            shots/*-pre-switch.png
