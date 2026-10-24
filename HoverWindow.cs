@@ -22,6 +22,11 @@ sealed class ActiveAcrylic : SystemBackdrop
         _c.SetSystemBackdropConfiguration(cfg);
         _c.AddSystemBackdropTarget(target);
     }
+    /// <summary>The base class calls this when the Windows theme changes. Its default implementation throws for this custom backdrop and took the whole app down (WinUI ArgumentException "target"); the configuration object is already kept current, so the notification is absorbed here.</summary>
+    protected override void OnDefaultSystemBackdropConfigurationChanged(ICompositionSupportsSystemBackdrop target, XamlRoot xamlRoot)
+    {
+        try { base.OnDefaultSystemBackdropConfigurationChanged(target, xamlRoot); } catch { }
+    }
     protected override void OnTargetDisconnected(ICompositionSupportsSystemBackdrop target)
     {
         base.OnTargetDisconnected(target);
